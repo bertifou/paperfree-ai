@@ -5,4 +5,5 @@ pypdf
 pytesseract
 pillow
 sqlalchemy
-requests\n
+requests\nopenai
+passlib[bcrypt]

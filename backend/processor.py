@@ -1,47 +1,46 @@
 import pytesseract
 from PIL import Image
-from pypdf import PdfReader
-import os
-import requests
-import json
+import PyPDF2
+from openai import OpenAI
+from database import SessionLocal, Setting
 
-def extract_text_from_pdf(pdf_path):
-    reader = PdfReader(pdf_path)
-    text = ""
-    for page in reader.pages:
-        text += page.extract_text() + "\n"
-    return text
+def get_llm_config():
+    db = SessionLocal()
+    base_url = db.query(Setting).filter(Setting.key == 'llm_base_url').first()
+    api_key = db.query(Setting).filter(Setting.key == 'llm_api_key').first()
+    model = db.query(Setting).filter(Setting.key == 'llm_model').first()
+    db.close()
 
-def extract_text_from_image(image_path):
-    return pytesseract.image_to_string(Image.open(image_path))
-
-def analyze_with_local_llm(text):
-    # Tentative de connexion à Ollama (local)
-    url = "http://localhost:11434/api/generate"
-    prompt = f"Analyse ce texte de document et donne-moi uniquement le type de document (Facture, Contrat, Lettre, etc.) et le montant total si applicable en format JSON: {text[:1000]}"
-
-    try:
-        response = requests.post(url, json={
-            "model": "llama3",
-            "prompt": prompt,
-            "stream": False
-        })
-        return response.json().get('response', 'Unknown')
-    except:
-        return "Local LLM not reachable"
+    return {
+        'base_url': base_url.value if base_url else 'http://localhost:1234/v1',
+        'api_key': api_key.value if api_key else 'lm-studio',
+        'model': model.value if model else 'local-model'
+    }
 
 def process_document(file_path):
-    print(f"Processing: {file_path}")
-    ext = os.path.splitext(file_path)[1].lower()
-
+    # Extraction du texte
     text = ""
-    if ext == '.pdf':
-        text = extract_text_from_pdf(file_path)
-    elif ext in ['.jpg', '.jpeg', '.png']:
-        text = extract_text_from_image(file_path)
+    if file_path.lower().endswith('.pdf'):
+        with open(file_path, 'rb') as f:
+            reader = PyPDF2.PdfReader(f)
+            for page in reader.pages:
+                text += page.extract_text() + "\n"
+    else:
+        text = pytesseract.image_to_string(Image.open(file_path))
 
-    analysis = analyze_with_local_llm(text)
-    print(f"Analysis result: {analysis}")
+    # Analyse par LLM
+    config = get_llm_config()
+    try:
+        client = OpenAI(base_url=config['base_url'], api_key=config['api_key'])
+        response = client.chat.completions.create(
+            model=config['model'],
+            messages=[
+                {"role": "system", "content": "Tu es un assistant spécialisé dans le tri de documents. Analyse le texte fourni et donne une catégorie courte (ex: Facture, Impôts, Santé, Travail) et un résumé de 10 mots maximum."},
+                {"role": "user", "content": text[:2000]} # Limite pour éviter de saturer le contexte local
+            ]
+        )
+        analysis = response.choices[0].message.content
+    except Exception as e:
+        analysis = f"Erreur d'analyse LLM: {str(e)}"
 
-    # Ici on sauvegarderait dans la DB SQLite
     return text, analysis

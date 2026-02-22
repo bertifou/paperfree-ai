@@ -7,68 +7,164 @@
     <script src='https://cdn.tailwindcss.com'></script>
     <style>
         body { background-color: #f3f4f6; }
+        .hidden { display: none; }
     </style>
 </head>
 <body class='p-4'>
     <div class='max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden md:max-w-2xl p-6'>
         <h1 class='text-2xl font-bold text-gray-900 mb-4'>📄 PaperFree-AI</h1>
 
-        <!-- Upload Section -->
-        <div class='mb-8 p-4 border-2 border-dashed border-blue-400 rounded-lg text-center'>
-            <input type='file' id='fileInput' class='hidden' accept='image/*,application/pdf' capture='environment'>
-            <button onclick='document.getElementById("fileInput").click()' class='bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600'>
-                📸 Scanner / Téléverser
-            </button>
-            <p class='text-sm text-gray-500 mt-2'>Prenez une photo ou choisissez un PDF</p>
+        <!-- Section SETUP -->
+        <div id='setupSection' class='hidden'>
+            <h2 class='text-xl font-semibold mb-4 text-blue-600'>Configuration Initiale</h2>
+            <div class='space-y-3'>
+                <input type='text' id='setupUser' placeholder='Nom d'utilisateur' class='w-full p-2 border rounded'>
+                <input type='password' id='setupPass' placeholder='Mot de passe' class='w-full p-2 border rounded'>
+                <input type='text' id='setupLlm' placeholder='URL API LLM (ex: http://192.168.1.102:8000/v1)' class='w-full p-2 border rounded'>
+                <button onclick='handleSetup()' class='w-full bg-green-500 text-white p-2 rounded hover:bg-green-600'>Finaliser l'installation</button>
+            </div>
         </div>
 
-        <!-- Document List -->
-        <h2 class='text-xl font-semibold mb-2'>Mes Documents</h2>
-        <div id='docList' class='space-y-2'>
-            <p class='text-gray-400 italic'>Chargement...</p>
+        <!-- Section LOGIN -->
+        <div id='loginSection' class='hidden'>
+            <h2 class='text-xl font-semibold mb-4'>Connexion</h2>
+            <div class='space-y-3'>
+                <input type='text' id='loginUser' placeholder='Utilisateur' class='w-full p-2 border rounded'>
+                <input type='password' id='loginPass' placeholder='Mot de passe' class='w-full p-2 border rounded'>
+                <button onclick='handleLogin()' class='w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600'>Se connecter</button>
+            </div>
+        </div>
+
+        <!-- Section APP -->
+        <div id='appSection' class='hidden'>
+            <div class='flex justify-between items-center mb-6'>
+                <button onclick='showTab("docs")' class='text-blue-500 font-medium'>Documents</button>
+                <button onclick='showTab("settings")' class='text-gray-500 font-medium'>Paramètres</button>
+                <button onclick='logout()' class='text-red-400 text-sm'>Déconnexion</button>
+            </div>
+
+            <div id='tabDocs'>
+                <div class='mb-8 p-4 border-2 border-dashed border-blue-400 rounded-lg text-center'>
+                    <input type='file' id='fileInput' class='hidden' accept='image/*,application/pdf' capture='environment'>
+                    <button onclick='document.getElementById("fileInput").click()' class='bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600'>
+                        📸 Scanner / Téléverser
+                    </button>
+                </div>
+                <h2 class='text-xl font-semibold mb-2'>Mes Documents</h2>
+                <div id='docList' class='space-y-2'></div>
+            </div>
+
+            <div id='tabSettings' class='hidden'>
+                <h2 class='text-xl font-semibold mb-4'>Paramètres LLM</h2>
+                <div class='space-y-3'>
+                    <label class='block text-sm font-medium text-gray-700'>URL de base de l'API</label>
+                    <input type='text' id='settingLlmUrl' class='w-full p-2 border rounded'>
+                    <button onclick='saveSettings()' class='bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600'>Enregistrer</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         const API_URL = 'http://localhost:8000';
+        let authHeader = localStorage.getItem('paperfree_auth');
 
-        // Upload logic
-        document.getElementById('fileInput').onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
+        async function checkStatus() {
+            const res = await fetch(`${API_URL}/status`);
+            const data = await res.json();
 
-            const formData = new FormData();
-            formData.append('file', file);
-
-            try {
-                await fetch(`${API_URL}/upload`, { method: 'POST', body: formData });
-                alert('Téléchargement réussi !');
+            if (data.setup_required) {
+                showSection('setup');
+            } else if (!authHeader) {
+                showSection('login');
+            } else {
+                showSection('app');
                 loadDocuments();
-            } catch (err) {
-                alert('Erreur lors du téléchargement');
-            }
-        };
-
-        // Load documents
-        async function loadDocuments() {
-            try {
-                const res = await fetch(`${API_URL}/documents`);
-                const docs = await res.json();
-                const list = document.getElementById('docList');
-                list.innerHTML = docs.map(d => `
-                    <div class='p-3 bg-gray-50 rounded border'>
-                        <div class='font-medium'>${d.filename}</div>
-                        <div class='text-xs text-blue-600'>Catégorie: ${d.category}</div>
-                        <div class='text-xs text-gray-400'>${new Date(d.created_at).toLocaleDateString()}</div>
-                    </div>
-                `).join('') || '<p class="text-gray-400">Aucun document.</p>';
-            } catch (err) {
-                document.getElementById('docList').innerHTML = '<p class="text-red-400">Erreur de connexion au serveur.</p>';
+                loadSettings();
             }
         }
 
-        loadDocuments();
-        setInterval(loadDocuments, 5000); // Refresh every 5s
+        function showSection(name) {
+            ['setup', 'login', 'app'].forEach(s => document.getElementById(s + 'Section').classList.add('hidden'));
+            document.getElementById(name + 'Section').classList.remove('hidden');
+        }
+
+        function showTab(name) {
+            document.getElementById('tabDocs').classList.toggle('hidden', name !== 'docs');
+            document.getElementById('tabSettings').classList.toggle('hidden', name !== 'settings');
+        }
+
+        async function handleSetup() {
+            const user = document.getElementById('setupUser').value;
+            const pass = document.getElementById('setupPass').value;
+            const url = document.getElementById('setupLlm').value;
+
+            const res = await fetch(`${API_URL}/setup?username=${user}&password=${pass}&llm_url=${encodeURIComponent(url)}`, { method: 'POST' });
+            if (res.ok) {
+                alert('Installation réussie ! Connectez-vous.');
+                showSection('login');
+            }
+        }
+
+        function handleLogin() {
+            const user = document.getElementById('loginUser').value;
+            const pass = document.getElementById('loginPass').value;
+            authHeader = 'Basic ' + btoa(user + ':' + pass);
+            localStorage.setItem('paperfree_auth', authHeader);
+            checkStatus();
+        }
+
+        function logout() {
+            localStorage.removeItem('paperfree_auth');
+            authHeader = null;
+            checkStatus();
+        }
+
+        async function loadDocuments() {
+            try {
+                const res = await fetch(`${API_URL}/documents`, { headers: { 'Authorization': authHeader } });
+                if (res.status === 401) return logout();
+                const docs = await res.json();
+                document.getElementById('docList').innerHTML = docs.map(d => `
+                    <div class='p-3 bg-gray-50 rounded border'>
+                        <div class='font-medium'>${d.filename}</div>
+                        <div class='text-xs text-blue-600'>${d.category || 'Analyse en cours...'}</div>
+                        <div class='text-xs text-gray-400'>${new Date(d.created_at).toLocaleDateString()}</div>
+                    </div>
+                `).join('') || '<p class="text-gray-400">Aucun document.</p>';
+            } catch (err) {}
+        }
+
+        async function loadSettings() {
+            const res = await fetch(`${API_URL}/settings`, { headers: { 'Authorization': authHeader } });
+            const settings = await res.json();
+            document.getElementById('settingLlmUrl').value = settings.llm_base_url || '';
+        }
+
+        async function saveSettings() {
+            const url = document.getElementById('settingLlmUrl').value;
+            await fetch(`${API_URL}/settings?key=llm_base_url&value=${encodeURIComponent(url)}`, { 
+                method: 'POST', 
+                headers: { 'Authorization': authHeader } 
+            });
+            alert('Paramètres enregistrés');
+        }
+
+        document.getElementById('fileInput').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const formData = new FormData();
+            formData.append('file', file);
+            await fetch(`${API_URL}/upload`, { 
+                method: 'POST', 
+                body: formData, 
+                headers: { 'Authorization': authHeader }
+            });
+            loadDocuments();
+        };
+
+        checkStatus();
+        setInterval(() => { if(authHeader) loadDocuments(); }, 5000);
     </script>
 </body>
 </html>
