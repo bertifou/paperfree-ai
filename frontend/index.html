@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang='fr'>
+<head>
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>PaperFree-AI</title>
+    <script src='https://cdn.tailwindcss.com'></script>
+    <style>
+        body { background-color: #f3f4f6; }
+    </style>
+</head>
+<body class='p-4'>
+    <div class='max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden md:max-w-2xl p-6'>
+        <h1 class='text-2xl font-bold text-gray-900 mb-4'>📄 PaperFree-AI</h1>
+
+        <!-- Upload Section -->
+        <div class='mb-8 p-4 border-2 border-dashed border-blue-400 rounded-lg text-center'>
+            <input type='file' id='fileInput' class='hidden' accept='image/*,application/pdf' capture='environment'>
+            <button onclick='document.getElementById("fileInput").click()' class='bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600'>
+                📸 Scanner / Téléverser
+            </button>
+            <p class='text-sm text-gray-500 mt-2'>Prenez une photo ou choisissez un PDF</p>
+        </div>
+
+        <!-- Document List -->
+        <h2 class='text-xl font-semibold mb-2'>Mes Documents</h2>
+        <div id='docList' class='space-y-2'>
+            <p class='text-gray-400 italic'>Chargement...</p>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:8000';
+
+        // Upload logic
+        document.getElementById('fileInput').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                await fetch(`${API_URL}/upload`, { method: 'POST', body: formData });
+                alert('Téléchargement réussi !');
+                loadDocuments();
+            } catch (err) {
+                alert('Erreur lors du téléchargement');
+            }
+        };
+
+        // Load documents
+        async function loadDocuments() {
+            try {
+                const res = await fetch(`${API_URL}/documents`);
+                const docs = await res.json();
+                const list = document.getElementById('docList');
+                list.innerHTML = docs.map(d => `
+                    <div class='p-3 bg-gray-50 rounded border'>
+                        <div class='font-medium'>${d.filename}</div>
+                        <div class='text-xs text-blue-600'>Catégorie: ${d.category}</div>
+                        <div class='text-xs text-gray-400'>${new Date(d.created_at).toLocaleDateString()}</div>
+                    </div>
+                `).join('') || '<p class="text-gray-400">Aucun document.</p>';
+            } catch (err) {
+                document.getElementById('docList').innerHTML = '<p class="text-red-400">Erreur de connexion au serveur.</p>';
+            }
+        }
+
+        loadDocuments();
+        setInterval(loadDocuments, 5000); // Refresh every 5s
+    </script>
+</body>
+</html>
