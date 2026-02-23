@@ -156,13 +156,15 @@
         </div>
 
         <!-- TAB SETTINGS -->
-        <div id='tabSettings' class='hidden bg-white rounded-xl shadow-sm p-6 max-w-lg'>
-            <h2 class='text-lg font-semibold mb-4'>Paramètres LLM</h2>
+        <div id='tabSettings' class='hidden bg-white rounded-xl shadow-sm p-6 max-w-2xl'>
+
+            <!-- ── LLM ── -->
+            <h2 class='text-lg font-semibold mb-4'>⚙️ Paramètres LLM</h2>
             <div class='space-y-3'>
                 <div>
                     <label class='block text-sm font-medium text-gray-700 mb-1'>URL de base de l'API</label>
                     <input type='text' id='settingLlmUrl' class='w-full p-2 border rounded text-sm' placeholder='http://localhost:1234/v1'>
-                    <p class='text-xs text-gray-400 mt-1'>LM Studio: :1234/v1 · Ollama: :11434/v1 · OpenAI: api.openai.com/v1</p>
+                    <p class='text-xs text-gray-400 mt-1'>LM Studio : :1234/v1 · Ollama : :11434/v1 · OpenAI : api.openai.com/v1</p>
                 </div>
                 <div>
                     <label class='block text-sm font-medium text-gray-700 mb-1'>Modèle</label>
@@ -172,35 +174,134 @@
                     <label class='block text-sm font-medium text-gray-700 mb-1'>Clé API</label>
                     <input type='text' id='settingLlmKey' class='w-full p-2 border rounded text-sm' placeholder='lm-studio'>
                 </div>
-                <button onclick='saveSettings()' class='bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 text-sm'>
-                    Enregistrer
-                </button>
+                <button onclick='saveSettings()' class='bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 text-sm'>Enregistrer</button>
                 <p id='settingsSaved' class='text-green-600 text-sm hidden'>✓ Paramètres enregistrés</p>
             </div>
 
-            <!-- Paramètres Email -->
+            <!-- ── GUIDE CONNEXION EMAIL ── -->
             <div class='mt-8 pt-6 border-t'>
-                <h2 class='text-lg font-semibold mb-1'>📧 Compte Email IMAP</h2>
-                <p class='text-xs text-gray-400 mb-4'>Gmail : imap.gmail.com · Outlook : outlook.office365.com</p>
+                <h2 class='text-lg font-semibold mb-1'>📧 Connexion Email — Quel provider utilisez-vous ?</h2>
+                <p class='text-xs text-gray-500 mb-4'>Cliquez sur votre fournisseur pour afficher le guide de configuration.</p>
+                <div class='grid grid-cols-2 gap-3 mb-6 sm:grid-cols-4'>
+                    <button onclick='showGuide("gmail")'     class='guide-btn border-2 border-gray-200 rounded-xl p-3 text-center hover:border-red-400 hover:bg-red-50 transition'>
+                        <div class='text-2xl mb-1'>📮</div><div class='text-xs font-semibold text-gray-700'>Gmail</div><div class='text-xs text-gray-400'>@gmail.com</div>
+                    </button>
+                    <button onclick='showGuide("outlook")'   class='guide-btn border-2 border-gray-200 rounded-xl p-3 text-center hover:border-blue-400 hover:bg-blue-50 transition'>
+                        <div class='text-2xl mb-1'>🪟</div><div class='text-xs font-semibold text-gray-700'>Outlook perso</div><div class='text-xs text-gray-400'>@hotmail/@live</div>
+                    </button>
+                    <button onclick='showGuide("m365")'      class='guide-btn border-2 border-gray-200 rounded-xl p-3 text-center hover:border-blue-400 hover:bg-blue-50 transition'>
+                        <div class='text-2xl mb-1'>🏢</div><div class='text-xs font-semibold text-gray-700'>Microsoft 365</div><div class='text-xs text-gray-400'>Entreprise / École</div>
+                    </button>
+                    <button onclick='showGuide("other")'     class='guide-btn border-2 border-gray-200 rounded-xl p-3 text-center hover:border-gray-400 hover:bg-gray-50 transition'>
+                        <div class='text-2xl mb-1'>✉️</div><div class='text-xs font-semibold text-gray-700'>Autre</div><div class='text-xs text-gray-400'>Yahoo, OVH, Free…</div>
+                    </button>
+                </div>
+
+                <!-- Guide Gmail -->
+                <div id='guide-gmail' class='guide-panel hidden bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-sm'>
+                    <h3 class='font-bold text-red-700 mb-2'>📮 Gmail — OAuth2 obligatoire (gratuit)</h3>
+                    <p class='text-gray-600 mb-3'>Google a supprimé l'auth basique. Il faut créer une app OAuth2 gratuite sur Google Cloud Console (sans carte de crédit, sans vérification pour usage personnel).</p>
+                    <ol class='space-y-2 text-gray-700 list-decimal list-inside'>
+                        <li>Aller sur <a href='https://console.cloud.google.com' target='_blank' class='text-blue-600 underline font-medium'>console.cloud.google.com</a> → <b>Créer un projet</b> (ex: "PaperFree-AI")</li>
+                        <li><b>APIs &amp; Services</b> → <b>Bibliothèque</b> → chercher <b>"Gmail API"</b> → <b>Activer</b></li>
+                        <li><b>APIs &amp; Services</b> → <b>Écran de consentement OAuth</b> → Type : <b>Externe</b> → remplir le nom → Sauvegarder</li>
+                        <li><b>Credentials</b> → <b>+ Créer des identifiants</b> → <b>ID client OAuth 2.0</b> → Type : <b>Application Web</b></li>
+                        <li>URI de redirection autorisée : <code class='bg-white border px-1 rounded font-mono text-xs select-all' onclick='this.select()'>http://localhost:8000/email/oauth/google/callback</code></li>
+                        <li>Copier le <b>Client ID</b> et le <b>Client Secret</b> ci-dessous → <b>Enregistrer</b> → <b>Connecter mon compte Gmail</b></li>
+                        <li>Si l'écran "App non vérifiée" apparaît → cliquer <b>Avancé</b> → <b>Accéder à [nom] (non sécurisé)</b> — c'est normal pour une app personnelle.</li>
+                    </ol>
+                    <p class='mt-3 text-xs text-gray-500'>ℹ️ Serveur IMAP : <code class='bg-white px-1 rounded cursor-pointer font-mono' onclick='fillImap("imap.gmail.com")'>imap.gmail.com</code> (rempli automatiquement lors de la connexion)</p>
+                </div>
+
+                <!-- Guide Outlook perso -->
+                <div id='guide-outlook' class='guide-panel hidden bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 text-sm'>
+                    <h3 class='font-bold text-blue-700 mb-2'>🪟 Outlook / Hotmail / Live — Mot de passe d'application (recommandé)</h3>
+                    <p class='text-gray-600 mb-2'>Microsoft a rendu très difficile l'enregistrement d'une app Azure pour les comptes personnels. La solution la plus simple est un <b>mot de passe d'application</b>, qui fonctionne avec tous les clients email tiers (Thunderbird, Apple Mail, etc.).</p>
+                    <div class='bg-white border border-blue-100 rounded-lg p-3 mb-3'>
+                        <p class='font-semibold text-blue-800 mb-2'>✅ Option 1 — Mot de passe d'application (simple, sans Azure)</p>
+                        <ol class='space-y-1 text-gray-700 list-decimal list-inside'>
+                            <li>Aller sur <a href='https://account.microsoft.com/security' target='_blank' class='text-blue-600 underline font-medium'>account.microsoft.com/security</a></li>
+                            <li>Activer la <b>vérification en deux étapes</b> si ce n'est pas déjà fait</li>
+                            <li>Section <b>Sécurité avancée</b> → <b>Mot de passe d'application</b> → <b>Créer</b></li>
+                            <li>Nommer l'app "PaperFree-AI" → copier le mot de passe généré</li>
+                            <li>Dans la section IMAP ci-dessous : saisir votre adresse email + ce mot de passe</li>
+                            <li>Serveur IMAP : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer text-xs' onclick='fillImap("imap-mail.outlook.com")'>imap-mail.outlook.com</code></li>
+                        </ol>
+                    </div>
+                    <div class='bg-white border border-gray-200 rounded-lg p-3'>
+                        <p class='font-semibold text-gray-600 mb-2'>⚙️ Option 2 — OAuth2 via Azure (pour développeurs, carte de crédit requise pour vérification)</p>
+                        <ol class='space-y-1 text-gray-600 list-decimal list-inside text-xs'>
+                            <li>Créer un compte Azure sur <a href='https://portal.azure.com' target='_blank' class='text-blue-600 underline'>portal.azure.com</a> (vérification CB, non débité)</li>
+                            <li>Microsoft Entra ID → <b>Inscriptions d'applications</b> → <b>Nouvelle inscription</b></li>
+                            <li>Type : <b>Comptes Microsoft personnels uniquement</b> · Redirect URI : <code class='bg-gray-100 px-1 rounded font-mono' onclick='this.select()'>http://localhost:8000/email/oauth/callback</code></li>
+                            <li><b>Certificats &amp; secrets</b> → Nouveau secret → copier la valeur</li>
+                            <li><b>Autorisations API</b> → Office 365 Exchange Online → <code class='bg-gray-100 px-1 rounded font-mono'>IMAP.AccessAsUser.All</code> + <code class='bg-gray-100 px-1 rounded font-mono'>offline_access</code></li>
+                            <li>Remplir les champs OAuth2 Microsoft ci-dessous → Connecter</li>
+                        </ol>
+                    </div>
+                </div>
+
+                <!-- Guide Microsoft 365 -->
+                <div id='guide-m365' class='guide-panel hidden bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4 text-sm'>
+                    <h3 class='font-bold text-indigo-700 mb-2'>🏢 Microsoft 365 Entreprise / École — OAuth2 Azure</h3>
+                    <p class='text-gray-600 mb-3'>Votre organisation dispose déjà d'un tenant Azure. Demandez à votre administrateur IT d'enregistrer l'application, ou faites-le vous-même si vous avez les droits.</p>
+                    <ol class='space-y-2 text-gray-700 list-decimal list-inside'>
+                        <li>Aller sur <a href='https://portal.azure.com' target='_blank' class='text-blue-600 underline font-medium'>portal.azure.com</a> avec votre compte professionnel</li>
+                        <li><b>Microsoft Entra ID</b> → <b>Inscriptions d'applications</b> → <b>Nouvelle inscription</b></li>
+                        <li>Type : <b>Comptes dans cet annuaire uniquement</b> (ou multitenant si plusieurs organisations)</li>
+                        <li>Redirect URI : <code class='bg-white border px-1 rounded font-mono text-xs select-all' onclick='this.select()'>http://localhost:8000/email/oauth/callback</code></li>
+                        <li><b>Certificats &amp; secrets</b> → Nouveau secret client → copier la valeur immédiatement</li>
+                        <li><b>Autorisations API</b> → <b>Ajouter</b> → Office 365 Exchange Online → <b>Autorisations déléguées</b> → cocher <code class='bg-white border px-1 rounded font-mono text-xs'>IMAP.AccessAsUser.All</code> + <code class='bg-white border px-1 rounded font-mono text-xs'>offline_access</code></li>
+                        <li>Cliquer <b>Accorder le consentement administrateur</b></li>
+                        <li>Remplir Client ID &amp; Secret dans la section OAuth2 Microsoft ci-dessous → Connecter</li>
+                    </ol>
+                    <p class='mt-3 text-xs text-gray-500'>ℹ️ Serveur IMAP : <code class='bg-white px-1 rounded cursor-pointer font-mono' onclick='fillImap("outlook.office365.com")'>outlook.office365.com</code></p>
+                </div>
+
+                <!-- Guide Autre -->
+                <div id='guide-other' class='guide-panel hidden bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4 text-sm'>
+                    <h3 class='font-bold text-gray-700 mb-2'>✉️ Autres providers — Connexion directe IMAP</h3>
+                    <p class='text-gray-600 mb-3'>Yahoo, OVH, Free, Orange, Fastmail, et la plupart des hébergeurs mail supportent encore l'authentification IMAP classique ou un mot de passe d'application.</p>
+                    <div class='space-y-2'>
+                        <div class='bg-white border rounded-lg p-3'>
+                            <p class='font-semibold text-gray-700 mb-1'>Yahoo Mail</p>
+                            <p class='text-gray-600 text-xs'>Activer "Accès aux apps moins sécurisées" <b>ou</b> générer un App Password sur <a href='https://security.yahoo.com' target='_blank' class='text-blue-600 underline'>security.yahoo.com</a>. Serveur : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.mail.yahoo.com")'>imap.mail.yahoo.com</code></p>
+                        </div>
+                        <div class='bg-white border rounded-lg p-3'>
+                            <p class='font-semibold text-gray-700 mb-1'>OVH / Infomaniak / Gandi</p>
+                            <p class='text-gray-600 text-xs'>Connexion directe avec vos identifiants email habituels. Serveur IMAP fourni par votre hébergeur dans votre espace client.</p>
+                        </div>
+                        <div class='bg-white border rounded-lg p-3'>
+                            <p class='font-semibold text-gray-700 mb-1'>Free / Orange / SFR</p>
+                            <p class='text-gray-600 text-xs'>
+                                Free : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.free.fr")'>imap.free.fr</code> ·
+                                Orange : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.orange.fr")'>imap.orange.fr</code> ·
+                                SFR : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.sfr.fr")'>imap.sfr.fr</code>
+                            </p>
+                        </div>
+                    </div>
+                    <p class='mt-3 text-xs text-gray-500'>Renseignez simplement votre email, mot de passe, et le serveur IMAP dans la section ci-dessous.</p>
+                </div>
+            </div>
+
+            <!-- ── CONFIG IMAP ── -->
+            <div class='mt-6 pt-6 border-t'>
+                <h2 class='text-lg font-semibold mb-1'>📧 Configuration IMAP</h2>
                 <div class='space-y-3'>
                     <div class='grid grid-cols-2 gap-3'>
-                <div>
-                    <label class='block text-sm font-medium text-gray-700 mb-1'>Serveur IMAP</label>
-                    <input type='text' id='settingEmailHost' class='w-full p-2 border rounded text-sm' placeholder='imap-mail.outlook.com'>
-                    <p class='text-xs text-gray-400 mt-1'>
-                        Hotmail/Outlook perso : <code class='bg-gray-100 px-1 rounded cursor-pointer' onclick='document.getElementById("settingEmailHost").value="imap-mail.outlook.com"'>imap-mail.outlook.com</code> ·
-                        Microsoft 365 pro : <code class='bg-gray-100 px-1 rounded cursor-pointer' onclick='document.getElementById("settingEmailHost").value="outlook.office365.com"'>outlook.office365.com</code> ·
-                        Gmail : <code class='bg-gray-100 px-1 rounded cursor-pointer' onclick='document.getElementById("settingEmailHost").value="imap.gmail.com"'>imap.gmail.com</code>
-                    </p>
-                </div>
+                        <div>
+                            <label class='block text-sm font-medium text-gray-700 mb-1'>Serveur IMAP</label>
+                            <input type='text' id='settingEmailHost' class='w-full p-2 border rounded text-sm' placeholder='imap.gmail.com'>
+                        </div>
                         <div>
                             <label class='block text-sm font-medium text-gray-700 mb-1'>Adresse email</label>
                             <input type='text' id='settingEmailUser' class='w-full p-2 border rounded text-sm' placeholder='vous@gmail.com'>
                         </div>
                     </div>
                     <div>
-                        <label class='block text-sm font-medium text-gray-700 mb-1'>Mot de passe (ou mot de passe d'application)</label>
+                        <label class='block text-sm font-medium text-gray-700 mb-1'>Mot de passe <span class='font-normal text-gray-400'>(ou mot de passe d'application)</span></label>
                         <input type='password' id='settingEmailPass' class='w-full p-2 border rounded text-sm' placeholder='••••••••'>
+                        <p class='text-xs text-gray-400 mt-1'>Laisser vide si vous utilisez OAuth2 (Gmail ou Microsoft 365).</p>
                     </div>
                     <div class='grid grid-cols-2 gap-3'>
                         <div>
@@ -226,28 +327,20 @@
                             <input type='number' id='settingEmailPromoDays' class='w-full p-2 border rounded text-sm' placeholder='7'>
                         </div>
                     </div>
-                    <button onclick='saveEmailSettings()' class='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm'>
-                        Enregistrer la config email
-                    </button>
-                    <button onclick='testEmailConnection()' class='ml-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm'>
-                        🔌 Tester la connexion
-                    </button>
-                    <p id='emailSettingsSaved' class='text-green-600 text-sm hidden mt-1'>✓ Config email sauvegardée</p>
-                    <p id='emailTestResult'   class='text-sm mt-1 hidden'></p>
+                    <div class='flex gap-2 flex-wrap'>
+                        <button onclick='saveEmailSettings()' class='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm'>Enregistrer</button>
+                        <button onclick='testEmailConnection()' class='bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm'>🔌 Tester la connexion</button>
+                    </div>
+                    <p id='emailSettingsSaved' class='text-green-600 text-sm hidden'>✓ Config email sauvegardée</p>
+                    <p id='emailTestResult' class='text-sm hidden'></p>
                 </div>
             </div>
 
-            <!-- OAuth2 Microsoft -->
+            <!-- ── OAuth2 Microsoft ── -->
             <div class='mt-8 pt-6 border-t'>
-                <h2 class='text-lg font-semibold mb-1'>🔐 OAuth2 Microsoft <span class='text-sm font-normal text-gray-400'>(Hotmail / Outlook / Live)</span></h2>
-                <p class='text-xs text-gray-400 mb-3'>
-                    Enregistrez une app sur
-                    <a href='https://portal.azure.com' target='_blank' class='text-blue-500 underline'>portal.azure.com</a>
-                    → Azure Active Directory → Inscriptions d'applications → Nouvelle inscription.<br>
-                    Type : <b>Comptes Microsoft personnels uniquement</b> · URI de redirection : <code class='bg-gray-100 px-1'>http://localhost:8000/email/oauth/callback</code><br>
-                    Permissions : <b>Office 365 Exchange Online</b> → <code class='bg-gray-100 px-1'>IMAP.AccessAsUser.All</code> + <code class='bg-gray-100 px-1'>offline_access</code>
-                </p>
-                <div class='space-y-3'>
+                <h2 class='text-lg font-semibold mb-1'>🔐 OAuth2 Microsoft <span class='text-sm font-normal text-gray-400'>(Microsoft 365 pro / Azure)</span></h2>
+                <p class='text-xs text-gray-500 mb-1'>Pour les comptes <b>@hotmail/@live/@outlook.com personnels</b>, préférez le <b>Mot de passe d'application</b> (voir guide Outlook ci-dessus).<br>OAuth2 Microsoft est destiné aux comptes d'entreprise ou aux développeurs disposant d'un tenant Azure.</p>
+                <div class='space-y-3 mt-3'>
                     <div class='grid grid-cols-2 gap-3'>
                         <div>
                             <label class='block text-sm font-medium text-gray-700 mb-1'>Client ID (Application ID)</label>
@@ -264,29 +357,18 @@
                     </div>
                     <div class='flex gap-3 items-center flex-wrap'>
                         <button onclick='saveOauthSettings()' class='bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 text-sm'>Enregistrer</button>
-                        <button onclick='startOauthFlow("microsoft")' id='btnOauthConnect'
-                            class='bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium'>
-                            🔑 Connecter Outlook/Hotmail
-                        </button>
-                        <button onclick='oauthDisconnect("microsoft")' id='btnOauthDisconnect' class='hidden bg-red-50 text-red-600 px-4 py-2 rounded hover:bg-red-100 text-sm'>
-                            Déconnecter
-                        </button>
+                        <button onclick='startOauthFlow("microsoft")' id='btnOauthConnect' class='bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium'>🔑 Connecter Outlook/Microsoft 365</button>
+                        <button onclick='oauthDisconnect("microsoft")' id='btnOauthDisconnect' class='hidden bg-red-50 text-red-600 px-4 py-2 rounded hover:bg-red-100 text-sm'>Déconnecter</button>
                         <span id='oauthStatus' class='text-sm'></span>
                     </div>
                     <p id='oauthSettingsSaved' class='text-green-600 text-sm hidden'>✓ Config OAuth Microsoft sauvegardée</p>
                 </div>
             </div>
 
-            <!-- OAuth2 Google -->
+            <!-- ── OAuth2 Google ── -->
             <div class='mt-8 pt-6 border-t'>
-                <h2 class='text-lg font-semibold mb-1'>🔴 OAuth2 Google <span class='text-sm font-normal text-gray-400'>(Gmail)</span></h2>
-                <p class='text-xs text-gray-400 mb-3'>
-                    Créez un projet sur
-                    <a href='https://console.cloud.google.com' target='_blank' class='text-blue-500 underline'>console.cloud.google.com</a>
-                    → Activer <b>Gmail API</b> → Écran de consentement OAuth (type <b>Externe</b>, mode Test suffit).<br>
-                    Credentials → ID client OAuth 2.0 (type <b>Application Web</b>) · URI de redirection : <code class='bg-gray-100 px-1'>http://localhost:8000/email/oauth/google/callback</code><br>
-                    Scope requis : <code class='bg-gray-100 px-1'>https://mail.google.com/</code> · Si "App non vérifiée" → cliquez <b>Avancé → Continuer</b>.
-                </p>
+                <h2 class='text-lg font-semibold mb-1'>🔴 OAuth2 Google <span class='text-sm font-normal text-gray-400'>(Gmail — obligatoire)</span></h2>
+                <p class='text-xs text-gray-500 mb-3'>Google n'accepte plus l'auth basique. Voir le <button onclick='showGuide("gmail")' class='text-blue-500 underline'>guide Gmail</button> ci-dessus pour créer votre app Google Cloud Console (gratuit, sans carte de crédit).</p>
                 <div class='space-y-3'>
                     <div class='grid grid-cols-2 gap-3'>
                         <div>
@@ -304,13 +386,8 @@
                     </div>
                     <div class='flex gap-3 items-center flex-wrap'>
                         <button onclick='saveGoogleOauthSettings()' class='bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 text-sm'>Enregistrer</button>
-                        <button onclick='startOauthFlow("google")' id='btnGoogleConnect'
-                            class='bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 text-sm font-medium'>
-                            🔑 Connecter mon compte Gmail
-                        </button>
-                        <button onclick='oauthDisconnect("google")' id='btnGoogleDisconnect' class='hidden bg-red-50 text-red-600 px-4 py-2 rounded hover:bg-red-100 text-sm'>
-                            Déconnecter
-                        </button>
+                        <button onclick='startOauthFlow("google")' id='btnGoogleConnect' class='bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 text-sm font-medium'>🔑 Connecter mon compte Gmail</button>
+                        <button onclick='oauthDisconnect("google")' id='btnGoogleDisconnect' class='hidden bg-red-50 text-red-600 px-4 py-2 rounded hover:bg-red-100 text-sm'>Déconnecter</button>
                         <span id='googleOauthStatus' class='text-sm'></span>
                     </div>
                     <p id='googleOauthSettingsSaved' class='text-green-600 text-sm hidden'>✓ Config OAuth Google sauvegardée</p>
@@ -326,6 +403,24 @@ const API_URL = 'http://localhost:8000';
 let authHeader = localStorage.getItem('paperfree_auth');
 let currentDocId = null;
 let allDocs = [];
+
+// ─── Guides provider ─────────────────────────────────────────────────────────
+function showGuide(provider) {
+    // Fermer tous les guides ouverts
+    document.querySelectorAll('.guide-panel').forEach(p => p.classList.add('hidden'));
+    // Ouvrir le guide demandé (toggle si déjà visible)
+    const panel = document.getElementById('guide-' + provider);
+    if (panel) panel.classList.toggle('hidden');
+    // Scroll vers le guide
+    if (panel && !panel.classList.contains('hidden')) {
+        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+function fillImap(host) {
+    document.getElementById('settingEmailHost').value = host;
+    document.getElementById('settingEmailHost').focus();
+}
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 async function checkStatus() {
