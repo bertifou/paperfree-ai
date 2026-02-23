@@ -7,7 +7,6 @@ pillow
 sqlalchemy
 requests
 openai
-passlib[bcrypt]
-bcrypt==4.0.1
+pwdlib[bcrypt]
 python-dotenv
 watchdog

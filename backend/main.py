@@ -9,7 +9,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
-from passlib.context import CryptContext
+from pwdlib import PasswordHash
 
 from processor import process_document
 from database import SessionLocal, Document, User, Setting
@@ -24,7 +24,7 @@ os.makedirs(WATCH_DIR,  exist_ok=True)
 
 app = FastAPI(title="PaperFree-AI API", version="0.2.0")
 security = HTTPBasic()
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_hasher = PasswordHash.recommended()
 
 # ---------------------------------------------------------------------------
 # CORS — autorise le frontend servi sur n'importe quel port local
@@ -53,7 +53,7 @@ def get_current_user(
     db: Session = Depends(get_db),
 ):
     user = db.query(User).filter(User.username == credentials.username).first()
-    if not user or not pwd_context.verify(credentials.password, user.hashed_password):
+    if not user or not pwd_hasher.verify(credentials.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Identifiants incorrects",
@@ -75,7 +75,7 @@ def setup_admin(username: str, password: str, llm_url: str = "", db: Session = D
     if db.query(User).first():
         raise HTTPException(status_code=400, detail="Setup déjà effectué")
 
-    db.add(User(username=username, hashed_password=pwd_context.hash(password)))
+    db.add(User(username=username, hashed_password=pwd_hasher.hash(password)))
     db.add(Setting(key="llm_base_url", value=llm_url or os.getenv("LLM_BASE_URL", "http://localhost:1234/v1")))
     db.add(Setting(key="llm_model",    value=os.getenv("LLM_MODEL", "local-model")))
     db.add(Setting(key="llm_api_key",  value=os.getenv("LLM_API_KEY", "lm-studio")))
@@ -85,7 +85,6 @@ def setup_admin(username: str, password: str, llm_url: str = "", db: Session = D
 # ---------------------------------------------------------------------------
 # Routes documents
 # ---------------------------------------------------------------------------
-@app.post("/upload")
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
@@ -125,6 +124,86 @@ def get_document(doc_id: int, db: Session = Depends(get_db), current_user: User 
     if not doc:
         raise HTTPException(status_code=404, detail="Document introuvable")
     return doc
+
+
+@app.patch("/documents/{doc_id}/form")
+def update_form_data(doc_id: int, form_data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Sauvegarde les champs du formulaire édités par l'utilisateur."""
+    import json
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document introuvable")
+    doc.form_data = json.dumps(form_data, ensure_ascii=False)
+    # Mettre à jour aussi les métadonnées principales si présentes
+    if "category" in form_data: doc.category = form_data["category"]
+    if "doc_date"  in form_data: doc.doc_date  = form_data["doc_date"]
+    if "amount"    in form_data: doc.amount    = form_data["amount"]
+    if "issuer"    in form_data: doc.issuer    = form_data["issuer"]
+    if "summary"   in form_data: doc.summary   = form_data["summary"]
+    db.commit()
+    return {"message": "Formulaire sauvegardé"}
+
+
+@app.get("/search")
+def search_documents(
+    q: str = Query(...),
+    mode: str = Query("text"),  # "text" ou "llm"
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    mode=text : recherche classique full-text dans filename, content, category, issuer.
+    mode=llm  : RAG simple — on envoie les extraits pertinents au LLM qui synthétise une réponse.
+    """
+    # Recherche textuelle de base (commune aux deux modes)
+    results = db.query(Document).filter(
+        or_(
+            Document.content.contains(q),
+            Document.filename.contains(q),
+            Document.category.contains(q),
+            Document.issuer.contains(q),
+            Document.summary.contains(q),
+        )
+    ).order_by(Document.created_at.desc()).limit(10).all()
+
+    if mode == "text":
+        return {"mode": "text", "results": results, "llm_answer": None}
+
+    # Mode LLM — RAG simple
+    if not results:
+        return {"mode": "llm", "results": [], "llm_answer": "Aucun document correspondant trouvé dans la base."}
+
+    # Construire le contexte : extraits des documents trouvés
+    context_parts = []
+    for doc in results:
+        snippet = (doc.content or "")[:800]
+        context_parts.append(
+            f"[Document: {doc.filename} | Catégorie: {doc.category} | Date: {doc.doc_date} | Émetteur: {doc.issuer}]\n{snippet}"
+        )
+    context = "\n\n---\n\n".join(context_parts)
+
+    try:
+        from processor import get_llm_config
+        from openai import OpenAI
+        config = get_llm_config()
+        client = OpenAI(base_url=config["base_url"], api_key=config["api_key"])
+        response = client.chat.completions.create(
+            model=config["model"],
+            messages=[
+                {"role": "system", "content": (
+                    "Tu es un assistant qui aide à retrouver des informations dans des documents administratifs. "
+                    "Réponds en français, de façon concise, en te basant uniquement sur les documents fournis. "
+                    "Si l'information n'est pas dans les documents, dis-le clairement."
+                )},
+                {"role": "user", "content": f"Question : {q}\n\nDocuments disponibles :\n\n{context}"},
+            ],
+            temperature=0.2,
+        )
+        llm_answer = response.choices[0].message.content.strip()
+    except Exception as e:
+        llm_answer = f"Erreur LLM : {str(e)}"
+
+    return {"mode": "llm", "results": results, "llm_answer": llm_answer}
 
 
 @app.delete("/documents/{doc_id}")
@@ -184,6 +263,9 @@ def _run_processing(doc_id: int, file_path: str):
             doc.content  = text
             doc.category = analysis.get("category")
             doc.summary  = analysis.get("summary")
+            doc.doc_date = analysis.get("date")
+            doc.amount   = analysis.get("amount")
+            doc.issuer   = analysis.get("issuer")
             db.commit()
     except Exception as e:
         print(f"[processor] Erreur doc {doc_id}: {e}")

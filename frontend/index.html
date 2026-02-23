@@ -8,163 +8,432 @@
     <style>
         body { background-color: #f3f4f6; }
         .hidden { display: none; }
+        .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; font-weight: 600; }
+        #pdfViewer { width: 100%; height: 500px; border: none; }
+        .meta-badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
     </style>
 </head>
 <body class='p-4'>
-    <div class='max-w-md mx-auto bg-white rounded-xl shadow-md overflow-hidden md:max-w-2xl p-6'>
-        <h1 class='text-2xl font-bold text-gray-900 mb-4'>📄 PaperFree-AI</h1>
 
-        <!-- Section SETUP -->
-        <div id='setupSection' class='hidden'>
-            <h2 class='text-xl font-semibold mb-4 text-blue-600'>Configuration Initiale</h2>
-            <div class='space-y-3'>
-                <input type='text' id='setupUser' placeholder="Nom d'utilisateur" class='w-full p-2 border rounded'>
-                <input type='password' id='setupPass' placeholder='Mot de passe' class='w-full p-2 border rounded'>
-                <input type='text' id='setupLlm' placeholder='URL API LLM (ex: http://192.168.1.102:8000/v1)' class='w-full p-2 border rounded'>
-                <button onclick='handleSetup()' class='w-full bg-green-500 text-white p-2 rounded hover:bg-green-600'>Finaliser l'installation</button>
-            </div>
-        </div>
+<!-- LAYOUT PRINCIPAL -->
+<div class='max-w-6xl mx-auto'>
 
-        <!-- Section LOGIN -->
-        <div id='loginSection' class='hidden'>
-            <h2 class='text-xl font-semibold mb-4'>Connexion</h2>
-            <div class='space-y-3'>
-                <input type='text' id='loginUser' placeholder='Utilisateur' class='w-full p-2 border rounded'>
-                <input type='password' id='loginPass' placeholder='Mot de passe' class='w-full p-2 border rounded'>
-                <button onclick='handleLogin()' class='w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600'>Se connecter</button>
-            </div>
-        </div>
-
-        <!-- Section APP -->
-        <div id='appSection' class='hidden'>
-            <div class='flex justify-between items-center mb-6'>
-                <button onclick='showTab("docs")' class='text-blue-500 font-medium'>Documents</button>
-                <button onclick='showTab("settings")' class='text-gray-500 font-medium'>Paramètres</button>
-                <button onclick='logout()' class='text-red-400 text-sm'>Déconnexion</button>
-            </div>
-
-            <div id='tabDocs'>
-                <div class='mb-8 p-4 border-2 border-dashed border-blue-400 rounded-lg text-center'>
-                    <input type='file' id='fileInput' class='hidden' accept='image/*,application/pdf' capture='environment'>
-                    <button onclick='document.getElementById("fileInput").click()' class='bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600'>
-                        📸 Scanner / Téléverser
-                    </button>
-                </div>
-                <h2 class='text-xl font-semibold mb-2'>Mes Documents</h2>
-                <div id='docList' class='space-y-2'></div>
-            </div>
-
-            <div id='tabSettings' class='hidden'>
-                <h2 class='text-xl font-semibold mb-4'>Paramètres LLM</h2>
-                <div class='space-y-3'>
-                    <label class='block text-sm font-medium text-gray-700'>URL de base de l'API</label>
-                    <input type='text' id='settingLlmUrl' class='w-full p-2 border rounded'>
-                    <button onclick='saveSettings()' class='bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600'>Enregistrer</button>
-                </div>
-            </div>
+    <!-- SETUP -->
+    <div id='setupSection' class='hidden max-w-md mx-auto bg-white rounded-xl shadow-md p-6 mt-10'>
+        <h1 class='text-2xl font-bold mb-1'>📄 PaperFree-AI</h1>
+        <p class='text-gray-500 text-sm mb-4'>Configuration initiale</p>
+        <div class='space-y-3'>
+            <input type='text' id='setupUser' placeholder="Nom d'utilisateur" class='w-full p-2 border rounded'>
+            <input type='password' id='setupPass' placeholder='Mot de passe' class='w-full p-2 border rounded'>
+            <input type='text' id='setupLlm' placeholder='URL API LLM (ex: http://192.168.1.102:1234/v1)' class='w-full p-2 border rounded'>
+            <button onclick='handleSetup()' class='w-full bg-green-500 text-white p-2 rounded hover:bg-green-600'>Finaliser l'installation</button>
+            <p id='setupError' class='text-red-500 text-sm hidden'></p>
         </div>
     </div>
 
-    <script>
-        const API_URL = 'http://localhost:8000';
-        let authHeader = localStorage.getItem('paperfree_auth');
+    <!-- LOGIN -->
+    <div id='loginSection' class='hidden max-w-md mx-auto bg-white rounded-xl shadow-md p-6 mt-10'>
+        <h1 class='text-2xl font-bold mb-1'>📄 PaperFree-AI</h1>
+        <p class='text-gray-500 text-sm mb-4'>Connexion</p>
+        <div class='space-y-3'>
+            <input type='text' id='loginUser' placeholder='Utilisateur' class='w-full p-2 border rounded'>
+            <input type='password' id='loginPass' placeholder='Mot de passe' class='w-full p-2 border rounded'>
+            <button onclick='handleLogin()' class='w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600'>Se connecter</button>
+            <p id='loginError' class='text-red-500 text-sm hidden'>Identifiants incorrects.</p>
+        </div>
+    </div>
 
-        async function checkStatus() {
-            const res = await fetch(`${API_URL}/status`);
-            const data = await res.json();
+    <!-- APP -->
+    <div id='appSection' class='hidden'>
 
-            if (data.setup_required) {
-                showSection('setup');
-            } else if (!authHeader) {
-                showSection('login');
-            } else {
-                showSection('app');
-                loadDocuments();
-                loadSettings();
-            }
-        }
+        <!-- HEADER -->
+        <div class='bg-white rounded-xl shadow-sm p-4 mb-4 flex items-center justify-between'>
+            <h1 class='text-xl font-bold text-gray-800'>📄 PaperFree-AI</h1>
+            <div class='flex gap-3'>
+                <button onclick='showTab("docs")' id='btnDocs' class='text-sm px-3 py-1 rounded tab-active'>Documents</button>
+                <button onclick='showTab("settings")' id='btnSettings' class='text-sm px-3 py-1 rounded text-gray-500'>Paramètres</button>
+                <button onclick='logout()' class='text-sm text-red-400 hover:text-red-600'>Déconnexion</button>
+            </div>
+        </div>
 
-        function showSection(name) {
-            ['setup', 'login', 'app'].forEach(s => document.getElementById(s + 'Section').classList.add('hidden'));
-            document.getElementById(name + 'Section').classList.remove('hidden');
-        }
+        <!-- TAB DOCUMENTS -->
+        <div id='tabDocs' class='flex gap-4'>
 
-        function showTab(name) {
-            document.getElementById('tabDocs').classList.toggle('hidden', name !== 'docs');
-            document.getElementById('tabSettings').classList.toggle('hidden', name !== 'settings');
-        }
+            <!-- COLONNE GAUCHE: liste + upload + recherche -->
+            <div class='w-80 flex-shrink-0 space-y-3'>
 
-        async function handleSetup() {
-            const user = document.getElementById('setupUser').value;
-            const pass = document.getElementById('setupPass').value;
-            const url = document.getElementById('setupLlm').value;
+                <!-- Upload -->
+                <div class='bg-white rounded-xl shadow-sm p-4'>
+                    <input type='file' id='fileInput' class='hidden' accept='image/*,application/pdf' capture='environment'>
+                    <button onclick='document.getElementById("fileInput").click()'
+                        class='w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 text-sm font-medium'>
+                        📸 Scanner / Téléverser
+                    </button>
+                    <p id='uploadStatus' class='text-xs text-gray-400 mt-1 text-center hidden'>Traitement en cours...</p>
+                </div>
 
-            const res = await fetch(`${API_URL}/setup?username=${user}&password=${pass}&llm_url=${encodeURIComponent(url)}`, { method: 'POST' });
-            if (res.ok) {
-                alert('Installation réussie ! Connectez-vous.');
-                showSection('login');
-            }
-        }
-
-        function handleLogin() {
-            const user = document.getElementById('loginUser').value;
-            const pass = document.getElementById('loginPass').value;
-            authHeader = 'Basic ' + btoa(user + ':' + pass);
-            localStorage.setItem('paperfree_auth', authHeader);
-            checkStatus();
-        }
-
-        function logout() {
-            localStorage.removeItem('paperfree_auth');
-            authHeader = null;
-            checkStatus();
-        }
-
-        async function loadDocuments() {
-            try {
-                const res = await fetch(`${API_URL}/documents`, { headers: { 'Authorization': authHeader } });
-                if (res.status === 401) return logout();
-                const docs = await res.json();
-                document.getElementById('docList').innerHTML = docs.map(d => `
-                    <div class='p-3 bg-gray-50 rounded border'>
-                        <div class='font-medium'>${d.filename}</div>
-                        <div class='text-xs text-blue-600'>${d.category || 'Analyse en cours...'}</div>
-                        <div class='text-xs text-gray-400'>${new Date(d.created_at).toLocaleDateString()}</div>
+                <!-- Recherche -->
+                <div class='bg-white rounded-xl shadow-sm p-4 space-y-2'>
+                    <div class='flex gap-2'>
+                        <input type='text' id='searchInput' placeholder='Rechercher...'
+                            class='flex-1 p-2 border rounded text-sm' onkeydown='if(event.key==="Enter") doSearch("text")'>
+                        <button onclick='doSearch("text")' class='bg-gray-100 hover:bg-gray-200 px-3 rounded text-sm'>🔍</button>
                     </div>
-                `).join('') || '<p class="text-gray-400">Aucun document.</p>';
-            } catch (err) {}
-        }
+                    <button onclick='doSearch("llm")'
+                        class='w-full bg-purple-50 hover:bg-purple-100 text-purple-700 py-1.5 px-3 rounded text-sm font-medium border border-purple-200'>
+                        ✨ Demander au LLM
+                    </button>
+                    <div id='llmAnswer' class='hidden bg-purple-50 rounded p-3 text-sm text-purple-900 border border-purple-200'></div>
+                </div>
 
-        async function loadSettings() {
-            const res = await fetch(`${API_URL}/settings`, { headers: { 'Authorization': authHeader } });
-            const settings = await res.json();
-            document.getElementById('settingLlmUrl').value = settings.llm_base_url || '';
-        }
+                <!-- Liste documents -->
+                <div class='bg-white rounded-xl shadow-sm p-4'>
+                    <h2 class='text-sm font-semibold text-gray-600 mb-2'>MES DOCUMENTS</h2>
+                    <div id='docList' class='space-y-2 max-h-[60vh] overflow-y-auto'></div>
+                </div>
+            </div>
 
-        async function saveSettings() {
-            const url = document.getElementById('settingLlmUrl').value;
-            await fetch(`${API_URL}/settings?key=llm_base_url&value=${encodeURIComponent(url)}`, { 
-                method: 'POST', 
-                headers: { 'Authorization': authHeader } 
-            });
-            alert('Paramètres enregistrés');
-        }
+            <!-- COLONNE DROITE: panneau de détail -->
+            <div class='flex-1 bg-white rounded-xl shadow-sm p-4' id='detailPanel'>
+                <div class='flex items-center justify-center h-64 text-gray-300 flex-col gap-2'>
+                    <span class='text-5xl'>📄</span>
+                    <span class='text-sm'>Sélectionnez un document</span>
+                </div>
+            </div>
+        </div>
 
-        document.getElementById('fileInput').onchange = async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            const formData = new FormData();
-            formData.append('file', file);
-            await fetch(`${API_URL}/upload`, { 
-                method: 'POST', 
-                body: formData, 
-                headers: { 'Authorization': authHeader }
-            });
-            loadDocuments();
-        };
+        <!-- TAB SETTINGS -->
+        <div id='tabSettings' class='hidden bg-white rounded-xl shadow-sm p-6 max-w-lg'>
+            <h2 class='text-lg font-semibold mb-4'>Paramètres LLM</h2>
+            <div class='space-y-3'>
+                <div>
+                    <label class='block text-sm font-medium text-gray-700 mb-1'>URL de base de l'API</label>
+                    <input type='text' id='settingLlmUrl' class='w-full p-2 border rounded text-sm' placeholder='http://localhost:1234/v1'>
+                    <p class='text-xs text-gray-400 mt-1'>LM Studio: :1234/v1 · Ollama: :11434/v1 · OpenAI: api.openai.com/v1</p>
+                </div>
+                <div>
+                    <label class='block text-sm font-medium text-gray-700 mb-1'>Modèle</label>
+                    <input type='text' id='settingLlmModel' class='w-full p-2 border rounded text-sm' placeholder='local-model'>
+                </div>
+                <div>
+                    <label class='block text-sm font-medium text-gray-700 mb-1'>Clé API</label>
+                    <input type='text' id='settingLlmKey' class='w-full p-2 border rounded text-sm' placeholder='lm-studio'>
+                </div>
+                <button onclick='saveSettings()' class='bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 text-sm'>
+                    Enregistrer
+                </button>
+                <p id='settingsSaved' class='text-green-600 text-sm hidden'>✓ Paramètres enregistrés</p>
+            </div>
+        </div>
 
-        checkStatus();
-        setInterval(() => { if(authHeader) loadDocuments(); }, 5000);
-    </script>
+    </div><!-- /appSection -->
+</div>
+
+<script>
+const API_URL = 'http://localhost:8000';
+let authHeader = localStorage.getItem('paperfree_auth');
+let currentDocId = null;
+let allDocs = [];
+
+// ─── Auth ────────────────────────────────────────────────────────────────────
+async function checkStatus() {
+    const res = await fetch(`${API_URL}/status`);
+    const data = await res.json();
+    if (data.setup_required) { showSection('setup'); }
+    else if (!authHeader)    { showSection('login'); }
+    else { showSection('app'); loadDocuments(); loadSettings(); }
+}
+
+function showSection(name) {
+    ['setup','login','app'].forEach(s => document.getElementById(s+'Section').classList.add('hidden'));
+    document.getElementById(name+'Section').classList.remove('hidden');
+}
+
+async function handleSetup() {
+    const user = document.getElementById('setupUser').value;
+    const pass = document.getElementById('setupPass').value;
+    const url  = document.getElementById('setupLlm').value;
+    const res = await fetch(`${API_URL}/setup?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&llm_url=${encodeURIComponent(url)}`, { method: 'POST' });
+    if (res.ok) { showSection('login'); }
+    else {
+        const err = document.getElementById('setupError');
+        err.textContent = (await res.json()).detail || 'Erreur';
+        err.classList.remove('hidden');
+    }
+}
+
+async function handleLogin() {
+    const user = document.getElementById('loginUser').value;
+    const pass = document.getElementById('loginPass').value;
+    authHeader = 'Basic ' + btoa(user + ':' + pass);
+    const res = await fetch(`${API_URL}/documents`, { headers: { 'Authorization': authHeader } });
+    if (res.status === 401) {
+        document.getElementById('loginError').classList.remove('hidden');
+        authHeader = null;
+    } else {
+        localStorage.setItem('paperfree_auth', authHeader);
+        showSection('app');
+        loadDocuments();
+        loadSettings();
+    }
+}
+
+function logout() {
+    localStorage.removeItem('paperfree_auth');
+    authHeader = null;
+    checkStatus();
+}
+
+// ─── Tabs ─────────────────────────────────────────────────────────────────────
+function showTab(name) {
+    document.getElementById('tabDocs').classList.toggle('hidden', name !== 'docs');
+    document.getElementById('tabSettings').classList.toggle('hidden', name !== 'settings');
+    document.getElementById('btnDocs').className     = 'text-sm px-3 py-1 rounded ' + (name==='docs'     ? 'tab-active' : 'text-gray-500');
+    document.getElementById('btnSettings').className = 'text-sm px-3 py-1 rounded ' + (name==='settings' ? 'tab-active' : 'text-gray-500');
+}
+
+// ─── Documents ────────────────────────────────────────────────────────────────
+const CATEGORY_COLORS = {
+    'Facture':'bg-orange-100 text-orange-700','Impôts':'bg-red-100 text-red-700',
+    'Santé':'bg-green-100 text-green-700','Banque':'bg-blue-100 text-blue-700',
+    'Contrat':'bg-purple-100 text-purple-700','Assurance':'bg-yellow-100 text-yellow-700',
+    'Travail':'bg-indigo-100 text-indigo-700','Courrier':'bg-gray-100 text-gray-700',
+    'Autre':'bg-gray-100 text-gray-500',
+};
+
+function renderDocList(docs) {
+    const el = document.getElementById('docList');
+    if (!docs.length) { el.innerHTML = '<p class="text-gray-400 text-sm">Aucun document.</p>'; return; }
+    el.innerHTML = docs.map(d => {
+        const color = CATEGORY_COLORS[d.category] || 'bg-gray-100 text-gray-500';
+        const processing = !d.category;
+        return `<div onclick='openDoc(${d.id})'
+            class='p-3 rounded-lg border cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition ${currentDocId===d.id?"border-blue-400 bg-blue-50":"border-gray-200"}'>
+            <div class='flex items-start justify-between gap-2'>
+                <span class='text-sm font-medium text-gray-800 truncate flex-1'>${d.filename}</span>
+                ${processing
+                    ? `<span class='meta-badge bg-gray-100 text-gray-400 animate-pulse'>⏳</span>`
+                    : `<span class='meta-badge ${color}'>${d.category}</span>`}
+            </div>
+            ${d.summary ? `<p class='text-xs text-gray-500 mt-1 truncate'>${d.summary}</p>` : ''}
+            ${d.issuer  ? `<p class='text-xs text-gray-400 mt-0.5'>${d.issuer}</p>` : ''}
+            <p class='text-xs text-gray-300 mt-1'>${new Date(d.created_at).toLocaleDateString('fr-CA')}</p>
+        </div>`;
+    }).join('');
+}
+
+async function loadDocuments() {
+    try {
+        const res = await fetch(`${API_URL}/documents`, { headers: { 'Authorization': authHeader } });
+        if (res.status === 401) return logout();
+        allDocs = await res.json();
+        renderDocList(allDocs);
+    } catch(e) {}
+}
+
+// ─── Détail document ──────────────────────────────────────────────────────────
+async function openDoc(id) {
+    currentDocId = id;
+    renderDocList(allDocs); // update selection highlight
+
+    const res = await fetch(`${API_URL}/documents/${id}`, { headers: { 'Authorization': authHeader } });
+    const doc = await res.json();
+
+    // Merge form_data overrides
+    let formData = {};
+    try { if (doc.form_data) formData = JSON.parse(doc.form_data); } catch(e) {}
+
+    const isPdf = doc.filename.toLowerCase().endsWith('.pdf');
+    const fileUrl = `${API_URL}/documents/${id}/file`;
+    const color = CATEGORY_COLORS[doc.category] || 'bg-gray-100 text-gray-500';
+
+    document.getElementById('detailPanel').innerHTML = `
+        <div class='flex items-start justify-between mb-4 gap-2'>
+            <div class='flex-1 min-w-0'>
+                <h2 class='text-lg font-bold text-gray-800 truncate'>${doc.filename}</h2>
+                <div class='flex flex-wrap gap-2 mt-1'>
+                    ${doc.category ? `<span class='meta-badge ${color}'>${doc.category}</span>` : ''}
+                    ${doc.issuer   ? `<span class='meta-badge bg-gray-100 text-gray-600'>🏢 ${doc.issuer}</span>` : ''}
+                    ${doc.doc_date ? `<span class='meta-badge bg-blue-50 text-blue-600'>📅 ${doc.doc_date}</span>` : ''}
+                    ${doc.amount   ? `<span class='meta-badge bg-green-50 text-green-700'>💶 ${doc.amount}</span>` : ''}
+                </div>
+            </div>
+            <div class='flex gap-2 flex-shrink-0'>
+                <a href='${fileUrl}' target='_blank'
+                    class='text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded font-medium'>⬇ Télécharger</a>
+                <button onclick='deleteDoc(${doc.id})'
+                    class='text-xs bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded font-medium'>🗑 Supprimer</button>
+            </div>
+        </div>
+
+        <!-- Onglets -->
+        <div class='flex gap-4 border-b mb-4 text-sm'>
+            <button onclick='showDocTab("preview")'  id='dtPreview'  class='pb-2 tab-active'>Aperçu</button>
+            <button onclick='showDocTab("ocr")'      id='dtOcr'      class='pb-2 text-gray-500'>Texte OCR</button>
+            <button onclick='showDocTab("form")'     id='dtForm'     class='pb-2 text-gray-500'>📝 Formulaire</button>
+        </div>
+
+        <!-- Aperçu -->
+        <div id='dtTabPreview'>
+            ${isPdf
+                ? `<iframe src='${fileUrl}' id='pdfViewer'></iframe>`
+                : `<img src='${fileUrl}' class='max-w-full rounded border' alt='${doc.filename}'
+                    onerror="this.outerHTML='<p class=text-gray-400 text-sm>Aperçu indisponible.</p>'">`
+            }
+        </div>
+
+        <!-- OCR -->
+        <div id='dtTabOcr' class='hidden'>
+            ${doc.content
+                ? `<pre class='text-xs text-gray-700 bg-gray-50 rounded p-4 overflow-auto max-h-[55vh] whitespace-pre-wrap font-mono'>${escHtml(doc.content)}</pre>`
+                : `<p class='text-gray-400 text-sm'>Texte non encore extrait ou document en cours de traitement.</p>`}
+        </div>
+
+        <!-- Formulaire -->
+        <div id='dtTabForm' class='hidden'>
+            <p class='text-xs text-gray-400 mb-3'>Champs pré-remplis par le LLM — éditables et sauvegardables.</p>
+            <div class='grid grid-cols-2 gap-3 mb-4'>
+                ${formField('Catégorie','category', formData.category||doc.category||'')}
+                ${formField('Émetteur','issuer', formData.issuer||doc.issuer||'')}
+                ${formField('Date','doc_date', formData.doc_date||doc.doc_date||'')}
+                ${formField('Montant','amount', formData.amount||doc.amount||'')}
+            </div>
+            <div class='mb-4'>
+                <label class='block text-xs font-medium text-gray-600 mb-1'>Résumé</label>
+                <textarea id='form_summary' rows='2'
+                    class='w-full p-2 border rounded text-sm'>${escHtml(formData.summary||doc.summary||'')}</textarea>
+            </div>
+            <div class='mb-4'>
+                <label class='block text-xs font-medium text-gray-600 mb-1'>Notes personnelles</label>
+                <textarea id='form_notes' rows='3'
+                    class='w-full p-2 border rounded text-sm'>${escHtml(formData.notes||'')}</textarea>
+            </div>
+            <button onclick='saveForm(${doc.id})'
+                class='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium'>
+                💾 Sauvegarder
+            </button>
+            <span id='formSaved' class='hidden text-green-600 text-sm ml-3'>✓ Sauvegardé</span>
+        </div>
+    `;
+}
+
+function formField(label, key, value) {
+    return `<div>
+        <label class='block text-xs font-medium text-gray-600 mb-1'>${label}</label>
+        <input type='text' id='form_${key}' value='${escAttr(value)}'
+            class='w-full p-2 border rounded text-sm'>
+    </div>`;
+}
+
+function showDocTab(name) {
+    ['preview','ocr','form'].forEach(t => {
+        document.getElementById('dtTab'+cap(t)).classList.toggle('hidden', t!==name);
+        const btn = document.getElementById('dt'+cap(t));
+        btn.className = 'pb-2 ' + (t===name ? 'tab-active' : 'text-gray-500');
+    });
+}
+
+async function saveForm(docId) {
+    const data = {
+        category: document.getElementById('form_category').value,
+        issuer:   document.getElementById('form_issuer').value,
+        doc_date: document.getElementById('form_doc_date').value,
+        amount:   document.getElementById('form_amount').value,
+        summary:  document.getElementById('form_summary').value,
+        notes:    document.getElementById('form_notes').value,
+    };
+    await fetch(`${API_URL}/documents/${docId}/form`, {
+        method: 'PATCH',
+        headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+    });
+    const el = document.getElementById('formSaved');
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 2000);
+    loadDocuments(); // rafraîchir la liste
+}
+
+async function deleteDoc(docId) {
+    if (!confirm('Supprimer ce document ?')) return;
+    await fetch(`${API_URL}/documents/${docId}`, {
+        method: 'DELETE', headers: { 'Authorization': authHeader }
+    });
+    currentDocId = null;
+    document.getElementById('detailPanel').innerHTML =
+        '<div class="flex items-center justify-center h-64 text-gray-300 flex-col gap-2"><span class="text-5xl">📄</span><span class="text-sm">Sélectionnez un document</span></div>';
+    loadDocuments();
+}
+
+// ─── Recherche ────────────────────────────────────────────────────────────────
+async function doSearch(mode) {
+    const q = document.getElementById('searchInput').value.trim();
+    if (!q) { loadDocuments(); return; }
+
+    const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(q)}&mode=${mode}`, {
+        headers: { 'Authorization': authHeader }
+    });
+    const data = await res.json();
+
+    allDocs = data.results;
+    renderDocList(allDocs);
+
+    const llmBox = document.getElementById('llmAnswer');
+    if (mode === 'llm' && data.llm_answer) {
+        llmBox.textContent = data.llm_answer;
+        llmBox.classList.remove('hidden');
+    } else {
+        llmBox.classList.add('hidden');
+    }
+}
+
+// ─── Settings ─────────────────────────────────────────────────────────────────
+async function loadSettings() {
+    const res = await fetch(`${API_URL}/settings`, { headers: { 'Authorization': authHeader } });
+    const s = await res.json();
+    document.getElementById('settingLlmUrl').value   = s.llm_base_url || '';
+    document.getElementById('settingLlmModel').value = s.llm_model    || '';
+    document.getElementById('settingLlmKey').value   = s.llm_api_key  || '';
+}
+
+async function saveSettings() {
+    const pairs = [
+        ['llm_base_url', document.getElementById('settingLlmUrl').value],
+        ['llm_model',    document.getElementById('settingLlmModel').value],
+        ['llm_api_key',  document.getElementById('settingLlmKey').value],
+    ];
+    for (const [k, v] of pairs) {
+        await fetch(`${API_URL}/settings?key=${k}&value=${encodeURIComponent(v)}`,
+            { method: 'POST', headers: { 'Authorization': authHeader } });
+    }
+    const el = document.getElementById('settingsSaved');
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 2000);
+}
+
+// ─── Upload ───────────────────────────────────────────────────────────────────
+document.getElementById('fileInput').onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const status = document.getElementById('uploadStatus');
+    status.classList.remove('hidden');
+    const formData = new FormData();
+    formData.append('file', file);
+    await fetch(`${API_URL}/upload`, {
+        method: 'POST', body: formData, headers: { 'Authorization': authHeader }
+    });
+    e.target.value = '';
+    setTimeout(() => status.classList.add('hidden'), 3000);
+    loadDocuments();
+};
+
+// ─── Utils ────────────────────────────────────────────────────────────────────
+function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function escAttr(s) { return String(s||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
+function cap(s)     { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+checkStatus();
+setInterval(() => { if (authHeader) loadDocuments(); }, 8000);
+</script>
 </body>
 </html>

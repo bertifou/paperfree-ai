@@ -17,9 +17,13 @@ class Document(Base):
     __tablename__ = "documents"
     id = Column(Integer, primary_key=True, index=True)
     filename = Column(String, nullable=False)
-    content = Column(Text, nullable=True)       # Texte brut OCR/PDF
-    category = Column(String, nullable=True)    # Ex: Facture, Contrat...
-    summary = Column(String, nullable=True)     # Résumé court généré par LLM
+    content = Column(Text, nullable=True)        # Texte brut OCR/PDF
+    category = Column(String, nullable=True)     # Ex: Facture, Contrat...
+    summary = Column(String, nullable=True)      # Résumé court LLM
+    doc_date = Column(String, nullable=True)     # Date principale YYYY-MM-DD
+    amount = Column(String, nullable=True)       # Montant avec devise
+    issuer = Column(String, nullable=True)       # Organisme émetteur
+    form_data = Column(Text, nullable=True)      # JSON: champs formulaire édités
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 
