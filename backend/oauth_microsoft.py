@@ -43,7 +43,8 @@ SCOPES = [
 ]
 
 # Stockage temporaire du code_verifier PKCE entre /start et /callback
-_pkce_store: dict[str, str] = {}   # state → code_verifier
+# TTL de 10 min pour éviter les fuites mémoire
+_pkce_store: dict[str, tuple[str, float]] = {}   # state → (code_verifier, timestamp)
 
 
 # ---------------------------------------------------------------------------
@@ -95,7 +96,12 @@ def build_auth_url() -> tuple[str, str]:
 
     state          = secrets.token_urlsafe(16)
     code_verifier, code_challenge = _generate_pkce()
-    _pkce_store[state] = code_verifier  # mémoriser pour le callback
+    # Nettoyer les entrées expirées (> 10 min)
+    now = time.time()
+    expired = [k for k, (_, ts) in _pkce_store.items() if now - ts > 600]
+    for k in expired:
+        del _pkce_store[k]
+    _pkce_store[state] = (code_verifier, now)  # mémoriser pour le callback
 
     params = {
         "client_id":             cfg["client_id"],
@@ -123,9 +129,10 @@ def exchange_code_for_tokens(code: str, state: str) -> dict:
     Retourne le dict de tokens.
     """
     cfg = get_oauth_config()
-    code_verifier = _pkce_store.pop(state, None)
-    if not code_verifier:
-        raise ValueError(f"State OAuth invalide ou expiré : {state}")
+    entry = _pkce_store.pop(state, None)
+    if not entry:
+        raise ValueError(f"State OAuth invalide ou expiré (> 10 min) : {state}")
+    code_verifier, _ = entry
 
     data = {
         "client_id":     cfg["client_id"],

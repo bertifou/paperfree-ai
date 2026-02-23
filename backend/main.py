@@ -379,13 +379,40 @@ def _get_email_creds(db: Session):
     return host, user, pwd, settings
 
 
+@app.get("/email/test")
+def test_email_connection(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Diagnostic complet de la connexion email."""
+    settings = {s.key: s.value for s in db.query(Setting).all()}
+    host = settings.get("email_host", "")
+    user = settings.get("email_user", "")
+    pwd  = settings.get("email_password", "")
+    import oauth_microsoft
+    oauth_ok = oauth_microsoft.is_oauth_configured()
+
+    if not host:
+        return {"ok": False, "error": "Serveur IMAP non configuré", "oauth": oauth_ok}
+    if not user:
+        return {"ok": False, "error": "Adresse email non configurée", "oauth": oauth_ok}
+    if not pwd and not oauth_ok:
+        return {"ok": False, "error": "Mot de passe manquant et OAuth2 non configuré", "oauth": oauth_ok}
+
+    try:
+        folders = email_monitor.list_folders(host, user, pwd)
+        return {"ok": True, "folders_count": len(folders), "oauth": oauth_ok,
+                "host": host, "user": user}
+    except ValueError as e:
+        return {"ok": False, "error": str(e), "oauth": oauth_ok}
+    except Exception as e:
+        return {"ok": False, "error": str(e), "oauth": oauth_ok}
+
+
 @app.get("/email/folders")
 def get_email_folders(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     host, user, pwd, _ = _get_email_creds(db)
     try:
         folders = email_monitor.list_folders(host, user, pwd)
     except ValueError as e:
-        raise HTTPException(status_code=401, detail=str(e))
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erreur IMAP : {e}")
     return {"folders": folders}

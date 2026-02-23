@@ -602,19 +602,29 @@ async function saveEmailSettings() {
 }
 
 async function testEmailConnection() {
-    const res = await fetch(`${API_URL}/email/folders`, { headers: { 'Authorization': authHeader } });
     const el = document.getElementById('emailTestResult');
     el.classList.remove('hidden');
-    if (res.ok) {
+    el.textContent = '⏳ Test en cours...';
+    el.className = 'text-sm mt-1 text-blue-500';
+    try {
+        // Sauvegarder d'abord les paramètres courants
+        await saveEmailSettings();
+        const res = await fetch(`${API_URL}/email/test`, { headers: { 'Authorization': authHeader } });
         const data = await res.json();
-        el.textContent = `✅ Connexion réussie — ${data.folders.length} dossier(s) trouvé(s)`;
-        el.className = 'text-sm mt-1 text-green-600';
-    } else {
-        const err = await res.json();
-        el.textContent = `❌ Erreur : ${err.detail || 'Connexion impossible'}`;
+        if (data.ok) {
+            el.textContent = `✅ Connexion réussie — ${data.folders_count} dossier(s) trouvé(s) — ${data.oauth ? 'OAuth2' : 'Auth basique'}`;
+            el.className = 'text-sm mt-1 text-green-600';
+            // Recharger les dossiers dans le sélecteur email
+            loadEmailFolders();
+        } else {
+            el.textContent = `❌ ${data.error || 'Connexion impossible'}`;
+            el.className = 'text-sm mt-1 text-red-600';
+        }
+    } catch(e) {
+        el.textContent = `❌ Erreur réseau : ${e.message}`;
         el.className = 'text-sm mt-1 text-red-600';
     }
-    setTimeout(() => el.classList.add('hidden'), 5000);
+    setTimeout(() => el.classList.add('hidden'), 8000);
 }
 
 async function saveOauthSettings() {

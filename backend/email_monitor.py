@@ -11,6 +11,7 @@ import imaplib
 import email
 import email.header
 import os
+import re
 import json
 import threading
 import time
@@ -42,14 +43,29 @@ def _decode_header(value: str) -> str:
     return " ".join(result)
 
 
-def _connect(host: str, user: str, password: str, port: int = 0) -> imaplib.IMAP4_SSL:
+def _uid_bytes(uid) -> bytes:
+    """Normalise un UID en bytes pour les commandes IMAP."""
+    if isinstance(uid, bytes):
+        return uid
+    return str(uid).encode()
+
+
+def _folder_str(folder: str) -> str:
+    """Encode correctement le nom de dossier pour SELECT/COPY/CREATE."""
+    # Si le dossier contient des espaces ou des caractères spéciaux, on met des guillemets
+    if any(c in folder for c in (' ', '/', '-', '.')):
+        return f'"{folder}"'
+    return folder
+
+
+def _connect(host: str, user: str, password: str, port: int = 993) -> imaplib.IMAP4_SSL:
     """
     Connexion IMAP — supporte deux modes :
     - OAuth2 XOAUTH2 : si oauth_microsoft.is_oauth_configured() → utilisé automatiquement
     - Basique LOGIN  : sinon, utilise user/password (Gmail avec App Password, etc.)
     """
-    if port == 0:
-        port = 993
+    if not host:
+        raise ValueError("Serveur IMAP non configuré. Allez dans Paramètres > Email.")
 
     # Tenter OAuth2 en priorité si configuré
     try:
@@ -57,6 +73,7 @@ def _connect(host: str, user: str, password: str, port: int = 0) -> imaplib.IMAP
         if oauth_microsoft.is_oauth_configured():
             access_token, oauth_user = oauth_microsoft.get_valid_access_token()
             effective_user = oauth_user or user
+            logger.info(f"[email] Connexion OAuth2 pour {effective_user}@{host}")
             return oauth_microsoft.connect_imap_oauth(host, effective_user, access_token, port)
     except Exception as e:
         logger.warning(f"[email] OAuth2 indisponible, tentative login basique : {e}")
@@ -64,14 +81,17 @@ def _connect(host: str, user: str, password: str, port: int = 0) -> imaplib.IMAP
     # Fallback : authentification basique
     try:
         mail = imaplib.IMAP4_SSL(host, port)
-        mail.login(user, password)
+        typ, data = mail.login(user, password)
+        if typ != "OK":
+            raise imaplib.IMAP4.error(f"LOGIN returned {typ}")
+        logger.info(f"[email] Connexion basique OK pour {user}@{host}")
         return mail
     except imaplib.IMAP4.error as e:
         raw = str(e)
-        logger.error(f"[email] Erreur IMAP brute : {raw!r}")
-        if "LOGIN failed" in raw or "AUTHENTICATIONFAILED" in raw or "Invalid credentials" in raw:
+        logger.error(f"[email] Erreur IMAP : {raw!r}")
+        if any(k in raw for k in ("LOGIN failed", "AUTHENTICATIONFAILED", "Invalid credentials", "Authentication failed")):
             hint = ""
-            if "outlook" in host.lower() or "hotmail" in host.lower() or "office365" in host.lower():
+            if any(k in host.lower() for k in ("outlook", "hotmail", "office365", "live.com")):
                 hint = (
                     " Outlook/Hotmail bloque l'auth basique. Utilisez OAuth2 : "
                     "configurez client_id/secret dans Paramètres et cliquez 'Connecter Outlook'."
@@ -87,31 +107,50 @@ def _connect(host: str, user: str, password: str, port: int = 0) -> imaplib.IMAP
         raise ValueError(f"Impossible de joindre {host}:{port} — vérifiez le serveur et votre réseau.")
 
 
+def _select_folder(mail: imaplib.IMAP4_SSL, folder: str):
+    """Sélectionne un dossier IMAP, lève ValueError si échec."""
+    typ, data = mail.select(_folder_str(folder))
+    if typ != "OK":
+        # Essai sans guillemets si la première tentative échoue
+        typ2, data2 = mail.select(folder)
+        if typ2 != "OK":
+            raise ValueError(f"Dossier IMAP introuvable : {folder!r} (réponse : {data})")
+    return data
+
+
 def _ensure_folder(mail: imaplib.IMAP4_SSL, folder: str):
     """Crée le dossier IMAP s'il n'existe pas."""
-    result = mail.list('""', f'"{folder}"')
-    if result[0] == "OK" and result[1] and result[1][0]:
-        return  # existe déjà
-    mail.create(folder)
-    logger.info(f"[email] Dossier créé : {folder}")
+    try:
+        typ, listing = mail.list('""', f'"{folder}"')
+        if typ == "OK" and listing and listing[0]:
+            return  # existe déjà
+        mail.create(_folder_str(folder))
+        logger.info(f"[email] Dossier créé : {folder}")
+    except Exception as e:
+        logger.warning(f"[email] Impossible de créer/vérifier le dossier {folder!r} : {e}")
 
 
-def _move_message(mail: imaplib.IMAP4_SSL, uid: str, destination: str):
+def _move_message(mail: imaplib.IMAP4_SSL, uid, destination: str):
     """Déplace un message vers un dossier (COPY + DELETE + EXPUNGE)."""
+    uid_b = _uid_bytes(uid)
     try:
         _ensure_folder(mail, destination)
-        mail.uid("COPY", uid, destination)
-        mail.uid("STORE", uid, "+FLAGS", "\\Deleted")
+        typ, _ = mail.uid("COPY", uid_b, _folder_str(destination))
+        if typ != "OK":
+            logger.error(f"[email] COPY échoué pour uid {uid} → {destination}")
+            return
+        mail.uid("STORE", uid_b, "+FLAGS", "\\Deleted")
         mail.expunge()
         logger.info(f"[email] Message {uid} déplacé vers '{destination}'")
     except Exception as e:
         logger.error(f"[email] Erreur déplacement {uid} → {destination}: {e}")
 
 
-def _delete_message(mail: imaplib.IMAP4_SSL, uid: str):
+def _delete_message(mail: imaplib.IMAP4_SSL, uid):
     """Supprime définitivement un message."""
+    uid_b = _uid_bytes(uid)
     try:
-        mail.uid("STORE", uid, "+FLAGS", "\\Deleted")
+        mail.uid("STORE", uid_b, "+FLAGS", "\\Deleted")
         mail.expunge()
         logger.info(f"[email] Message {uid} supprimé")
     except Exception as e:
@@ -131,7 +170,7 @@ def list_emails(host: str, user: str, password: str,
     emails = []
     try:
         mail = _connect(host, user, password)
-        mail.select(f'"{folder}"' if " " in folder else folder)
+        _select_folder(mail, folder)
 
         status, data = mail.uid("SEARCH", None, "ALL")
         if status != "OK":
@@ -139,21 +178,20 @@ def list_emails(host: str, user: str, password: str,
             return []
 
         uids = data[0].split()
-        # Prendre les N plus récents
         uids_to_fetch = uids[-limit:] if len(uids) > limit else uids
-        uids_to_fetch = list(reversed(uids_to_fetch))  # du plus récent au plus ancien
+        uids_to_fetch = list(reversed(uids_to_fetch))
 
         for uid in uids_to_fetch:
             try:
                 status, msg_data = mail.uid("FETCH", uid, "(FLAGS RFC822.HEADER)")
-                if status != "OK":
+                if status != "OK" or not msg_data or not msg_data[0]:
                     continue
                 raw_headers = msg_data[0][1]
                 msg = email.message_from_bytes(raw_headers)
-                flags_str = msg_data[0][0].decode() if isinstance(msg_data[0][0], bytes) else str(msg_data[0][0])
+                flags_raw = msg_data[0][0]
+                flags_str = flags_raw.decode() if isinstance(flags_raw, bytes) else str(flags_raw)
                 is_read = "\\Seen" in flags_str
 
-                # Date
                 date_str = msg.get("Date", "")
                 try:
                     dt = parsedate_to_datetime(date_str)
@@ -161,15 +199,20 @@ def list_emails(host: str, user: str, password: str,
                 except Exception:
                     date_iso = date_str
 
-                # Pièces jointes (lecture rapide via structure)
+                # Vérification pièces jointes via BODYSTRUCTURE
                 has_attachment = False
-                status2, full_data = mail.uid("FETCH", uid, "(BODYSTRUCTURE)")
-                if status2 == "OK" and full_data[0]:
-                    body_str = full_data[0].decode() if isinstance(full_data[0], bytes) else str(full_data[0])
-                    has_attachment = "attachment" in body_str.lower() or "application/" in body_str.lower()
+                try:
+                    status2, full_data = mail.uid("FETCH", uid, "(BODYSTRUCTURE)")
+                    if status2 == "OK" and full_data and full_data[0]:
+                        body_str = full_data[0].decode() if isinstance(full_data[0], bytes) else str(full_data[0])
+                        has_attachment = ("attachment" in body_str.lower()
+                                          or "application/pdf" in body_str.lower()
+                                          or "image/" in body_str.lower())
+                except Exception:
+                    pass
 
                 emails.append({
-                    "uid": uid.decode(),
+                    "uid": uid.decode() if isinstance(uid, bytes) else str(uid),
                     "subject": _decode_header(msg.get("Subject", "(sans objet)")),
                     "sender":  _decode_header(msg.get("From", "")),
                     "date":    date_iso,
@@ -182,8 +225,11 @@ def list_emails(host: str, user: str, password: str,
                 continue
 
         mail.logout()
+    except ValueError:
+        raise
     except Exception as e:
         logger.error(f"[email] Erreur list_emails: {e}")
+        raise
     return emails
 
 
@@ -195,26 +241,35 @@ def list_folders(host: str, user: str, password: str) -> list[str]:
         status, data = mail.list()
         if status == "OK":
             for item in data:
-                if item:
-                    decoded = item.decode() if isinstance(item, bytes) else str(item)
-                    parts = decoded.split('"')
-                    if len(parts) >= 2:
-                        name = parts[-2] if parts[-1].strip() == "" else parts[-1].strip()
-                        if name and name not in ('/', ''):
-                            folders.append(name)
+                if not item:
+                    continue
+                decoded = item.decode() if isinstance(item, bytes) else str(item)
+                # Format : (\HasNoChildren) "/" "INBOX" ou (\HasNoChildren) "/" INBOX
+                # On extrait la dernière partie après le séparateur
+                match = re.search(r'"[^"]*"\s+(.+)$', decoded)
+                if match:
+                    name = match.group(1).strip().strip('"')
+                else:
+                    # Fallback : dernier token
+                    parts = decoded.rsplit(None, 1)
+                    name = parts[-1].strip().strip('"') if parts else ""
+                if name and name not in ('/', ''):
+                    folders.append(name)
         mail.logout()
+    except ValueError:
+        raise
     except imaplib.IMAP4.error as e:
         msg = str(e)
-        if "AUTHENTICATIONFAILED" in msg or "Invalid credentials" in msg or "LOGIN failed" in msg:
+        if any(k in msg for k in ("AUTHENTICATIONFAILED", "Invalid credentials", "LOGIN failed")):
             raise ValueError(
                 "Authentification IMAP échouée. "
                 "Gmail : App Password sur myaccount.google.com/apppasswords. "
-                "Outlook/Hotmail : Mot de passe d'application sur account.microsoft.com/security → Sécurité avancée."
+                "Outlook/Hotmail : utilisez OAuth2 (section ci-dessous)."
             )
-        raise
+        raise ValueError(f"Erreur IMAP : {msg}")
     except Exception as e:
         logger.error(f"[email] Erreur list_folders: {e}")
-        raise
+        raise ValueError(f"Impossible de lister les dossiers : {e}")
     return folders
 
 
@@ -233,9 +288,10 @@ def download_attachments(host: str, user: str, password: str,
     Retourne la liste des fichiers téléchargés avec leur uid source.
     """
     downloaded = []
+    os.makedirs(upload_dir, exist_ok=True)
     try:
         mail = _connect(host, user, password)
-        mail.select(f'"{folder}"' if " " in folder else folder)
+        _select_folder(mail, folder)
 
         search_criteria = "UNSEEN" if only_unread else "ALL"
         status, data = mail.uid("SEARCH", None, search_criteria)
@@ -247,9 +303,10 @@ def download_attachments(host: str, user: str, password: str,
         logger.info(f"[email] {len(uids)} email(s) à traiter pour pièces jointes")
 
         for uid in uids:
+            uid_b = _uid_bytes(uid)
             try:
-                status, msg_data = mail.uid("FETCH", uid, "(RFC822)")
-                if status != "OK":
+                status, msg_data = mail.uid("FETCH", uid_b, "(RFC822)")
+                if status != "OK" or not msg_data or not msg_data[0]:
                     continue
                 msg = email.message_from_bytes(msg_data[0][1])
                 subject = _decode_header(msg.get("Subject", ""))
@@ -258,15 +315,16 @@ def download_attachments(host: str, user: str, password: str,
                 for part in msg.walk():
                     if part.get_content_maintype() == "multipart":
                         continue
-                    if part.get("Content-Disposition") is None:
+                    disposition = part.get("Content-Disposition", "")
+                    if not disposition:
                         continue
                     filename = part.get_filename()
                     if not filename:
                         continue
                     filename = _decode_header(filename)
-                    # Sanitize
-                    import re
                     safe_name = re.sub(r'[^\w\.\-]', '_', filename)
+                    if not safe_name:
+                        safe_name = "attachment"
                     filepath = os.path.join(upload_dir, safe_name)
                     # Éviter les collisions
                     base, ext = os.path.splitext(safe_name)
@@ -276,11 +334,14 @@ def download_attachments(host: str, user: str, password: str,
                         filepath = os.path.join(upload_dir, safe_name)
                         counter += 1
 
+                    payload = part.get_payload(decode=True)
+                    if not payload:
+                        continue
                     with open(filepath, "wb") as f:
-                        f.write(part.get_payload(decode=True))
+                        f.write(payload)
                     logger.info(f"[email] Pièce jointe sauvegardée : {safe_name}")
                     downloaded.append({
-                        "uid": uid.decode(),
+                        "uid": uid.decode() if isinstance(uid, bytes) else str(uid),
                         "subject": subject,
                         "filename": safe_name,
                         "filepath": filepath,
@@ -288,13 +349,15 @@ def download_attachments(host: str, user: str, password: str,
                     has_any_attachment = True
 
                 if has_any_attachment:
-                    _move_message(mail, uid, treated_folder)
+                    _move_message(mail, uid_b, treated_folder)
 
             except Exception as e:
                 logger.warning(f"[email] Erreur traitement uid {uid}: {e}")
                 continue
 
         mail.logout()
+    except ValueError:
+        raise
     except Exception as e:
         logger.error(f"[email] Erreur download_attachments: {e}")
     return downloaded
@@ -307,7 +370,7 @@ def download_attachments(host: str, user: str, password: str,
 def _classify_email_llm(subject: str, sender: str, llm_config: dict) -> str:
     """
     Utilise le LLM pour classifier un email.
-    Retourne une catégorie parmi : Promotionnel, Facture, Notification, Personnel, Autre
+    Retourne : Promotionnel, Facture, Notification, Personnel, Autre
     """
     try:
         from openai import OpenAI
@@ -331,7 +394,6 @@ def _classify_email_llm(subject: str, sender: str, llm_config: dict) -> str:
             max_tokens=10,
         )
         result = response.choices[0].message.content.strip()
-        # Valider
         valid = {"Promotionnel", "Facture", "Notification", "Personnel", "Autre"}
         for v in valid:
             if v.lower() in result.lower():
@@ -351,28 +413,20 @@ def purge_promotional_emails(host: str, user: str, password: str,
     Analyse les emails du dossier et supprime les promotionnels
     plus vieux que older_than_days jours.
     Si older_than_days=0, analyse TOUS les emails sans limite d'âge.
-    Si dry_run=True, liste sans supprimer.
-    Retourne un rapport détaillé.
     """
     report = {
-        "total":       0,
-        "analysed":    0,
-        "deleted":     0,
-        "too_recent":  0,
-        "kept":        0,
-        "errors":      0,
-        "dry_run":     dry_run,
-        "older_than_days": older_than_days,
+        "total": 0, "analysed": 0, "deleted": 0,
+        "too_recent": 0, "kept": 0, "errors": 0,
+        "dry_run": dry_run, "older_than_days": older_than_days,
     }
 
-    # Si older_than_days=0 → pas de filtre d'âge
     cutoff = None
     if older_than_days > 0:
         cutoff = datetime.now(timezone.utc) - timedelta(days=older_than_days)
 
     try:
         mail = _connect(host, user, password)
-        mail.select(f'"{folder}"' if " " in folder else folder)
+        _select_folder(mail, folder)
 
         status, data = mail.uid("SEARCH", None, "ALL")
         if status != "OK":
@@ -384,9 +438,10 @@ def purge_promotional_emails(host: str, user: str, password: str,
         logger.info(f"[email] Purge promotionnels — {len(uids)} emails dans '{folder}' (cutoff: {cutoff})")
 
         for uid in uids:
+            uid_b = _uid_bytes(uid)
             try:
-                status, msg_data = mail.uid("FETCH", uid, "(RFC822.HEADER)")
-                if status != "OK":
+                status, msg_data = mail.uid("FETCH", uid_b, "(RFC822.HEADER)")
+                if status != "OK" or not msg_data or not msg_data[0]:
                     report["errors"] += 1
                     continue
 
@@ -395,7 +450,6 @@ def purge_promotional_emails(host: str, user: str, password: str,
                 sender   = _decode_header(msg.get("From", ""))
                 date_str = msg.get("Date", "")
 
-                # Filtre d'ancienneté (optionnel)
                 if cutoff:
                     try:
                         dt = parsedate_to_datetime(date_str)
@@ -403,10 +457,9 @@ def purge_promotional_emails(host: str, user: str, password: str,
                             dt = dt.replace(tzinfo=timezone.utc)
                         if dt > cutoff:
                             report["too_recent"] += 1
-                            logger.debug(f"[email] Ignoré (trop récent) : {subject[:40]}")
                             continue
                     except Exception:
-                        pass  # Date illisible → on analyse quand même
+                        pass
 
                 report["analysed"] += 1
                 category = _classify_email_llm(subject, sender, llm_config)
@@ -415,7 +468,7 @@ def purge_promotional_emails(host: str, user: str, password: str,
                 if category == "Promotionnel":
                     report["deleted"] += 1
                     if not dry_run:
-                        _delete_message(mail, uid)
+                        _delete_message(mail, uid_b)
                 else:
                     report["kept"] += 1
 
@@ -425,6 +478,8 @@ def purge_promotional_emails(host: str, user: str, password: str,
                 continue
 
         mail.logout()
+    except ValueError:
+        raise
     except Exception as e:
         logger.error(f"[email] Erreur purge_promotional_emails: {e}")
 
@@ -433,7 +488,7 @@ def purge_promotional_emails(host: str, user: str, password: str,
 
 
 # ---------------------------------------------------------------------------
-# Suppression manuelle d'un email
+# Suppression / déplacement / marquage manuels
 # ---------------------------------------------------------------------------
 
 def delete_email(host: str, user: str, password: str,
@@ -441,8 +496,8 @@ def delete_email(host: str, user: str, password: str,
     """Supprime un email par UID."""
     try:
         mail = _connect(host, user, password)
-        mail.select(f'"{folder}"' if " " in folder else folder)
-        _delete_message(mail, uid.encode())
+        _select_folder(mail, folder)
+        _delete_message(mail, uid)
         mail.logout()
         return True
     except Exception as e:
@@ -455,8 +510,8 @@ def move_email(host: str, user: str, password: str,
     """Déplace un email vers un autre dossier."""
     try:
         mail = _connect(host, user, password)
-        mail.select(f'"{source_folder}"' if " " in source_folder else source_folder)
-        _move_message(mail, uid.encode(), destination_folder)
+        _select_folder(mail, source_folder)
+        _move_message(mail, uid, destination_folder)
         mail.logout()
         return True
     except Exception as e:
@@ -469,8 +524,8 @@ def mark_as_read(host: str, user: str, password: str,
     """Marque un email comme lu."""
     try:
         mail = _connect(host, user, password)
-        mail.select(f'"{folder}"' if " " in folder else folder)
-        mail.uid("STORE", uid.encode(), "+FLAGS", "\\Seen")
+        _select_folder(mail, folder)
+        mail.uid("STORE", _uid_bytes(uid), "+FLAGS", "\\Seen")
         mail.logout()
         return True
     except Exception as e:
@@ -485,8 +540,6 @@ def mark_as_read(host: str, user: str, password: str,
 class EmailScheduler:
     """
     Tourne en arrière-plan et exécute les tâches email périodiquement.
-    Intervalle configurable (défaut: toutes les 15 min pour les pièces jointes,
-    toutes les 24h pour la purge promotionnels).
     """
 
     def __init__(self):
@@ -522,11 +575,15 @@ class EmailScheduler:
             try:
                 cfg = self._get_config()
 
-                # Vérifier que le compte email est configuré
-                host = cfg.get("email_host")
-                user = cfg.get("email_user")
-                pwd  = cfg.get("email_password")
-                if not (host and user and pwd):
+                # Vérifier que email_enabled = true
+                if cfg.get("email_enabled", "false").lower() != "true":
+                    self._stop_event.wait(60)
+                    continue
+
+                host = cfg.get("email_host", "")
+                user = cfg.get("email_user", "")
+                pwd  = cfg.get("email_password", "")
+                if not (host and user):
                     self._stop_event.wait(60)
                     continue
 
@@ -536,7 +593,8 @@ class EmailScheduler:
                     "model":    cfg.get("llm_model",     "local-model"),
                 }
 
-                upload_dir     = cfg.get("UPLOAD_DIR", "./storage/uploads")
+                # UPLOAD_DIR : priorité var env, puis valeur DB
+                upload_dir     = os.getenv("UPLOAD_DIR", cfg.get("UPLOAD_DIR", "./storage/uploads"))
                 treated_folder = cfg.get("email_treated_folder", "PaperFree-Traité")
                 attach_interval = int(cfg.get("email_attach_interval_min", "15"))
                 purge_interval  = int(cfg.get("email_purge_interval_hours", "24"))
@@ -545,17 +603,19 @@ class EmailScheduler:
 
                 # === Téléchargement pièces jointes ===
                 logger.info("[email-scheduler] Vérification des pièces jointes...")
-                downloaded = download_attachments(
-                    host, user, pwd, upload_dir,
-                    folder=email_folder,
-                    treated_folder=treated_folder,
-                )
-                if downloaded:
-                    logger.info(f"[email-scheduler] {len(downloaded)} pièce(s) jointe(s) téléchargée(s)")
-                    # Déclencher le traitement OCR/LLM pour chaque fichier
-                    _trigger_processing(downloaded)
+                try:
+                    downloaded = download_attachments(
+                        host, user, pwd, upload_dir,
+                        folder=email_folder,
+                        treated_folder=treated_folder,
+                    )
+                    if downloaded:
+                        logger.info(f"[email-scheduler] {len(downloaded)} pièce(s) jointe(s) téléchargée(s)")
+                        _trigger_processing(downloaded)
+                except Exception as e:
+                    logger.error(f"[email-scheduler] Erreur sync pièces jointes : {e}")
 
-                # === Purge promotionnels (une fois par jour) ===
+                # === Purge promotionnels (une fois par intervalle) ===
                 now = datetime.now(timezone.utc)
                 should_purge = (
                     self._last_purge is None
@@ -563,19 +623,21 @@ class EmailScheduler:
                 )
                 if should_purge:
                     logger.info("[email-scheduler] Purge des emails promotionnels...")
-                    report = purge_promotional_emails(
-                        host, user, pwd,
-                        llm_config=llm_config,
-                        folder=email_folder,
-                        older_than_days=promo_days,
-                    )
-                    logger.info(f"[email-scheduler] Purge : {report}")
+                    try:
+                        report = purge_promotional_emails(
+                            host, user, pwd,
+                            llm_config=llm_config,
+                            folder=email_folder,
+                            older_than_days=promo_days,
+                        )
+                        logger.info(f"[email-scheduler] Purge : {report}")
+                    except Exception as e:
+                        logger.error(f"[email-scheduler] Erreur purge : {e}")
                     self._last_purge = now
 
             except Exception as e:
                 logger.error(f"[email-scheduler] Erreur boucle: {e}")
 
-            # Attendre jusqu'au prochain cycle
             self._stop_event.wait(attach_interval * 60)
 
 
@@ -594,12 +656,7 @@ def _trigger_processing(downloaded: list[dict]):
 
             db = SessionLocal()
             try:
-                db_doc = Document(
-                    filename=filename,
-                    content=None,
-                    category=None,
-                    summary=None,
-                )
+                db_doc = Document(filename=filename, content=None, category=None, summary=None)
                 db.add(db_doc)
                 db.commit()
                 db.refresh(db_doc)
