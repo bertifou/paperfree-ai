@@ -31,7 +31,8 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Config OAuth2 Microsoft
 # ---------------------------------------------------------------------------
-MICROSOFT_TENANT   = "consumers"   # comptes personnels Hotmail/Outlook
+# Utiliser "common" pour supporter les comptes personnels Microsoft (live.com, hotmail.com)
+MICROSOFT_TENANT   = "common"
 AUTHORITY          = f"https://login.microsoftonline.com/{MICROSOFT_TENANT}"
 AUTH_ENDPOINT      = f"{AUTHORITY}/oauth2/v2.0/authorize"
 TOKEN_ENDPOINT     = f"{AUTHORITY}/oauth2/v2.0/token"
