@@ -674,18 +674,27 @@ async function syncAttachments() {
 
 async function purgePromo(dryRun) {
     const label = dryRun ? 'Simulation' : 'Purge';
-    showEmailMsg(`${label} en cours...`, 'blue');
-    const res = await fetch(`${API_URL}/email/purge-promotional?dry_run=${dryRun}`,
+    showEmailMsg(`${label} en cours... (peut prendre quelques secondes)`, 'blue');
+    // Si simulation, on analyse TOUS les emails (older_than_days=0)
+    const days = dryRun ? 0 : -1;
+    const res = await fetch(`${API_URL}/email/purge-promotional?dry_run=${dryRun}&older_than_days=${days}`,
         { method: 'POST', headers: { 'Authorization': authHeader } });
     if (res.ok) {
         const r = await res.json();
-        const msg = dryRun
-            ? `👁 Simulation : ${r.analysed} analysé(s), ${r.deleted} promotionnel(s) détecté(s)`
-            : `✅ Purge : ${r.deleted} email(s) promotionnel(s) supprimé(s)`;
-        showEmailMsg(msg, 'green');
+        let msg;
+        if (dryRun) {
+            msg = `👁 Simulation — ${r.total} email(s) au total, ${r.analysed} analysé(s), `
+                + `${r.too_recent} ignoré(s) (trop récents), ${r.deleted} promotionnel(s) détecté(s), `
+                + `${r.kept} conservé(s)`;
+        } else {
+            msg = `✅ Purge terminée — ${r.analysed} analysé(s), ${r.deleted} supprimé(s), `
+                + `${r.too_recent} ignoré(s) (trop récents), ${r.errors} erreur(s)`;
+        }
+        showEmailMsg(msg, r.deleted > 0 ? 'green' : 'blue');
         if (!dryRun) loadEmails();
     } else {
-        showEmailMsg('❌ Erreur lors de la purge', 'red');
+        const err = await res.json().catch(() => ({}));
+        showEmailMsg(`❌ Erreur : ${err.detail || 'Connexion ou config manquante'}`, 'red');
     }
 }
 

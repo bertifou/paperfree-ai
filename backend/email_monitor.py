@@ -302,11 +302,25 @@ def purge_promotional_emails(host: str, user: str, password: str,
     """
     Analyse les emails du dossier et supprime les promotionnels
     plus vieux que older_than_days jours.
+    Si older_than_days=0, analyse TOUS les emails sans limite d'âge.
     Si dry_run=True, liste sans supprimer.
-    Retourne un rapport {analysed, deleted, skipped}.
+    Retourne un rapport détaillé.
     """
-    report = {"analysed": 0, "deleted": 0, "skipped": 0, "dry_run": dry_run}
-    cutoff = datetime.now(timezone.utc) - timedelta(days=older_than_days)
+    report = {
+        "total":       0,
+        "analysed":    0,
+        "deleted":     0,
+        "too_recent":  0,
+        "kept":        0,
+        "errors":      0,
+        "dry_run":     dry_run,
+        "older_than_days": older_than_days,
+    }
+
+    # Si older_than_days=0 → pas de filtre d'âge
+    cutoff = None
+    if older_than_days > 0:
+        cutoff = datetime.now(timezone.utc) - timedelta(days=older_than_days)
 
     try:
         mail = _connect(host, user, password)
@@ -318,48 +332,55 @@ def purge_promotional_emails(host: str, user: str, password: str,
             return report
 
         uids = data[0].split()
-        logger.info(f"[email] Analyse purge promotionnels : {len(uids)} emails dans {folder}")
+        report["total"] = len(uids)
+        logger.info(f"[email] Purge promotionnels — {len(uids)} emails dans '{folder}' (cutoff: {cutoff})")
 
         for uid in uids:
             try:
                 status, msg_data = mail.uid("FETCH", uid, "(RFC822.HEADER)")
                 if status != "OK":
+                    report["errors"] += 1
                     continue
-                msg = email.message_from_bytes(msg_data[0][1])
-                subject = _decode_header(msg.get("Subject", ""))
-                sender  = _decode_header(msg.get("From",    ""))
+
+                msg      = email.message_from_bytes(msg_data[0][1])
+                subject  = _decode_header(msg.get("Subject", "(sans objet)"))
+                sender   = _decode_header(msg.get("From", ""))
                 date_str = msg.get("Date", "")
 
-                # Vérifier l'ancienneté
-                try:
-                    dt = parsedate_to_datetime(date_str)
-                    if dt.tzinfo is None:
-                        dt = dt.replace(tzinfo=timezone.utc)
-                    if dt > cutoff:
-                        report["skipped"] += 1
-                        continue  # Trop récent
-                except Exception:
-                    pass
+                # Filtre d'ancienneté (optionnel)
+                if cutoff:
+                    try:
+                        dt = parsedate_to_datetime(date_str)
+                        if dt.tzinfo is None:
+                            dt = dt.replace(tzinfo=timezone.utc)
+                        if dt > cutoff:
+                            report["too_recent"] += 1
+                            logger.debug(f"[email] Ignoré (trop récent) : {subject[:40]}")
+                            continue
+                    except Exception:
+                        pass  # Date illisible → on analyse quand même
 
                 report["analysed"] += 1
                 category = _classify_email_llm(subject, sender, llm_config)
-                logger.info(f"[email] [{category}] {subject[:50]}")
+                logger.info(f"[email] [{category}] {subject[:50]} | {sender[:30]}")
 
                 if category == "Promotionnel":
+                    report["deleted"] += 1
                     if not dry_run:
                         _delete_message(mail, uid)
-                    report["deleted"] += 1
                 else:
-                    report["skipped"] += 1
+                    report["kept"] += 1
 
             except Exception as e:
                 logger.warning(f"[email] Erreur uid {uid}: {e}")
+                report["errors"] += 1
                 continue
 
         mail.logout()
     except Exception as e:
         logger.error(f"[email] Erreur purge_promotional_emails: {e}")
 
+    logger.info(f"[email] Rapport purge : {report}")
     return report
 
 

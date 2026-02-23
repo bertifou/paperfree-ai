@@ -447,17 +447,17 @@ def sync_email_attachments(
 
 @app.post("/email/purge-promotional")
 def purge_promotional(
-    dry_run: bool = Query(False),
-    background_tasks: BackgroundTasks = None,
-    db: Session = Depends(get_db),
+    dry_run: bool    = Query(False),
+    older_than_days: int = Query(-1, description="Âge minimum en jours (-1 = utiliser le setting)"),
+    db: Session      = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """Déclenche manuellement la purge des emails promotionnels."""
     host, user, pwd, settings = _get_email_creds(db)
     from processor import get_llm_config
-    llm_config = get_llm_config()
-    folder     = settings.get("email_folder", "INBOX")
-    promo_days = int(settings.get("email_promo_days", "7"))
+    llm_config  = get_llm_config()
+    folder      = settings.get("email_folder", "INBOX")
+    promo_days  = older_than_days if older_than_days >= 0 else int(settings.get("email_promo_days", "7"))
 
     report = email_monitor.purge_promotional_emails(
         host, user, pwd,
@@ -466,7 +466,7 @@ def purge_promotional(
         older_than_days=promo_days,
         dry_run=dry_run,
     )
-    if not dry_run:
+    if not dry_run and report["deleted"] > 0:
         db.add(EmailLog(action="purge_promo", detail=str(report)))
         db.commit()
     return report
