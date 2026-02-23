@@ -1,10 +1,11 @@
 import os
 import re
 import threading
+import logging
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Depends, Query, HTTPException, status
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Depends, Query, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.responses import FileResponse
@@ -15,6 +16,32 @@ from pwdlib import PasswordHash
 from processor import process_document
 from database import SessionLocal, Document, User, Setting, EmailLog
 import email_monitor
+
+logger = logging.getLogger("uvicorn.access")
+
+# ---------------------------------------------------------------------------
+# Filtre de log — masque les valeurs sensibles dans les URLs
+# ---------------------------------------------------------------------------
+SENSITIVE_KEYS = {"email_password", "password", "llm_api_key", "token", "secret"}
+
+class _SensitiveFilter(logging.Filter):
+    _pattern = re.compile(
+        r'((?:' + '|'.join(SENSITIVE_KEYS) + r')=)[^&\s"]+',
+        re.IGNORECASE
+    )
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.args:
+            sanitized = []
+            for arg in (record.args if isinstance(record.args, tuple) else (record.args,)):
+                if isinstance(arg, str):
+                    arg = self._pattern.sub(r'\1***', arg)
+                sanitized.append(arg)
+            record.args = tuple(sanitized)
+        return True
+
+# Appliquer à tous les loggers uvicorn
+for _log_name in ("uvicorn.access", "uvicorn", "uvicorn.error", "fastapi"):
+    logging.getLogger(_log_name).addFilter(_SensitiveFilter())
 
 # ---------------------------------------------------------------------------
 # Config
@@ -347,7 +374,12 @@ def _get_email_creds(db: Session):
 @app.get("/email/folders")
 def get_email_folders(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     host, user, pwd, _ = _get_email_creds(db)
-    folders = email_monitor.list_folders(host, user, pwd)
+    try:
+        folders = email_monitor.list_folders(host, user, pwd)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur IMAP : {e}")
     return {"folders": folders}
 
 

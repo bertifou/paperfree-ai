@@ -158,15 +158,25 @@ def list_folders(host: str, user: str, password: str) -> list[str]:
             for item in data:
                 if item:
                     decoded = item.decode() if isinstance(item, bytes) else str(item)
-                    # Extraire le nom du dossier (dernier élément)
                     parts = decoded.split('"')
                     if len(parts) >= 2:
                         name = parts[-2] if parts[-1].strip() == "" else parts[-1].strip()
                         if name and name not in ('/', ''):
                             folders.append(name)
         mail.logout()
+    except imaplib.IMAP4.error as e:
+        msg = str(e)
+        if "AUTHENTICATIONFAILED" in msg or "Invalid credentials" in msg:
+            raise ValueError(
+                "Authentification IMAP échouée. "
+                "Gmail exige un mot de passe d'application (App Password) — "
+                "activez le 2FA sur votre compte Google puis générez un App Password sur "
+                "https://myaccount.google.com/apppasswords"
+            )
+        raise
     except Exception as e:
         logger.error(f"[email] Erreur list_folders: {e}")
+        raise
     return folders
 
 
