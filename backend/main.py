@@ -26,17 +26,25 @@ SENSITIVE_KEYS = {"email_password", "password", "llm_api_key", "token", "secret"
 
 class _SensitiveFilter(logging.Filter):
     _pattern = re.compile(
-        r'((?:' + '|'.join(SENSITIVE_KEYS) + r')=)[^&\s"]+',
+        r'((?:' + '|'.join(SENSITIVE_KEYS) + r')=)[^&\s"\']+ ',
         re.IGNORECASE
     )
+
+    def _mask(self, text: str) -> str:
+        return self._pattern.sub(r'\1*** ', text)
+
     def filter(self, record: logging.LogRecord) -> bool:
+        # Masquer dans le message formaté final
+        record.msg = self._mask(str(record.msg))
+        # Masquer dans les args (tuples uvicorn : method, path, status...)
         if record.args:
-            sanitized = []
-            for arg in (record.args if isinstance(record.args, tuple) else (record.args,)):
-                if isinstance(arg, str):
-                    arg = self._pattern.sub(r'\1***', arg)
-                sanitized.append(arg)
-            record.args = tuple(sanitized)
+            if isinstance(record.args, tuple):
+                record.args = tuple(
+                    self._mask(a) if isinstance(a, str) else a
+                    for a in record.args
+                )
+            elif isinstance(record.args, str):
+                record.args = self._mask(record.args)
         return True
 
 # Appliquer à tous les loggers uvicorn

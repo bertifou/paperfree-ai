@@ -42,10 +42,35 @@ def _decode_header(value: str) -> str:
     return " ".join(result)
 
 
-def _connect(host: str, user: str, password: str, port: int = 993) -> imaplib.IMAP4_SSL:
-    mail = imaplib.IMAP4_SSL(host, port)
-    mail.login(user, password)
-    return mail
+def _connect(host: str, user: str, password: str, port: int = 0) -> imaplib.IMAP4_SSL:
+    """
+    Connexion IMAP intelligente :
+    - Port 993 (défaut SSL) pour imap.gmail.com, outlook.office365.com, etc.
+    - Détecte automatiquement le port si non spécifié.
+    """
+    if port == 0:
+        port = 993  # SSL standard
+    try:
+        mail = imaplib.IMAP4_SSL(host, port)
+        mail.login(user, password)
+        return mail
+    except imaplib.IMAP4.error as e:
+        msg = str(e)
+        if "LOGIN failed" in msg or "AUTHENTICATIONFAILED" in msg or "Invalid credentials" in msg:
+            hint = ""
+            if "outlook" in host.lower() or "hotmail" in host.lower() or "office365" in host.lower():
+                hint = (
+                    " Outlook/Hotmail exige un mot de passe d'application : "
+                    "account.microsoft.com/security → Sécurité avancée → Mot de passe d'application. "
+                    "Assurez-vous aussi que l'accès IMAP est activé dans les paramètres Outlook."
+                )
+            elif "gmail" in host.lower():
+                hint = (
+                    " Gmail exige un mot de passe d'application (App Password) : "
+                    "myaccount.google.com/apppasswords (2FA requis)."
+                )
+            raise ValueError(f"Authentification IMAP échouée.{hint}")
+        raise
 
 
 def _ensure_folder(mail: imaplib.IMAP4_SSL, folder: str):
@@ -166,12 +191,11 @@ def list_folders(host: str, user: str, password: str) -> list[str]:
         mail.logout()
     except imaplib.IMAP4.error as e:
         msg = str(e)
-        if "AUTHENTICATIONFAILED" in msg or "Invalid credentials" in msg:
+        if "AUTHENTICATIONFAILED" in msg or "Invalid credentials" in msg or "LOGIN failed" in msg:
             raise ValueError(
                 "Authentification IMAP échouée. "
-                "Gmail exige un mot de passe d'application (App Password) — "
-                "activez le 2FA sur votre compte Google puis générez un App Password sur "
-                "https://myaccount.google.com/apppasswords"
+                "Gmail : App Password sur myaccount.google.com/apppasswords. "
+                "Outlook/Hotmail : Mot de passe d'application sur account.microsoft.com/security → Sécurité avancée."
             )
         raise
     except Exception as e:
