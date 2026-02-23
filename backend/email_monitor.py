@@ -67,16 +67,34 @@ def _connect(host: str, user: str, password: str, port: int = 993) -> imaplib.IM
     if not host:
         raise ValueError("Serveur IMAP non configuré. Allez dans Paramètres > Email.")
 
-    # Tenter OAuth2 en priorité si configuré
-    try:
-        import oauth_microsoft
-        if oauth_microsoft.is_oauth_configured():
-            access_token, oauth_user = oauth_microsoft.get_valid_access_token()
-            effective_user = oauth_user or user
-            logger.info(f"[email] Connexion OAuth2 pour {effective_user}@{host}")
-            return oauth_microsoft.connect_imap_oauth(host, effective_user, access_token, port)
-    except Exception as e:
-        logger.warning(f"[email] OAuth2 indisponible, tentative login basique : {e}")
+    # Tenter OAuth2 Google en priorité si le host est Gmail
+    if "gmail" in host.lower():
+        try:
+            import oauth_google
+            if oauth_google.is_oauth_configured():
+                access_token, oauth_user = oauth_google.get_valid_access_token()
+                effective_user = oauth_user or user
+                logger.info(f"[email] Connexion OAuth2 Google pour {effective_user}@{host}")
+                return oauth_google.connect_imap_oauth(host, effective_user, access_token, port)
+        except Exception as e:
+            logger.warning(f"[email] OAuth2 Google indisponible : {e}")
+            raise ValueError(
+                f"Connexion Gmail échouée. "
+                f"Gmail exige OAuth2 — configurez votre Client ID Google dans Paramètres > Gmail OAuth2. "
+                f"Détail : {e}"
+            )
+
+    # Tenter OAuth2 Microsoft pour Outlook/Hotmail/Office365
+    if any(k in host.lower() for k in ("outlook", "hotmail", "office365", "live.com", "microsoft")):
+        try:
+            import oauth_microsoft
+            if oauth_microsoft.is_oauth_configured():
+                access_token, oauth_user = oauth_microsoft.get_valid_access_token()
+                effective_user = oauth_user or user
+                logger.info(f"[email] Connexion OAuth2 Microsoft pour {effective_user}@{host}")
+                return oauth_microsoft.connect_imap_oauth(host, effective_user, access_token, port)
+        except Exception as e:
+            logger.warning(f"[email] OAuth2 Microsoft indisponible, tentative login basique : {e}")
 
     # Fallback : authentification basique
     try:

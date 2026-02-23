@@ -79,6 +79,16 @@ EMAIL_DEFAULTS = {
     "oauth_expires_at":            "0",
     "oauth_token_type":            "",
     "oauth_scope":                 "",
+    # OAuth2 Google
+    "google_client_id":            "",
+    "google_client_secret":        "",
+    "google_redirect_uri":         "http://localhost:8000/email/oauth/google/callback",
+    "google_access_token":         "",
+    "google_refresh_token":        "",
+    "google_expires_at":           "0",
+    "google_token_type":           "",
+    "google_scope":                "",
+    "google_email_user":           "",
 }
 
 def init_email_defaults():

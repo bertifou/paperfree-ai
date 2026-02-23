@@ -555,18 +555,36 @@ def get_email_logs(
 
 @app.get("/email/oauth/status")
 def oauth_status(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Retourne l'état de la connexion OAuth2."""
-    import oauth_microsoft
-    configured  = bool(db.query(Setting).filter(Setting.key == "oauth_client_id", Setting.value != "").first())
-    connected   = oauth_microsoft.is_oauth_configured()
-    expires_at  = float(db.query(Setting).filter(Setting.key == "oauth_expires_at").first().value or 0
-                        if db.query(Setting).filter(Setting.key == "oauth_expires_at").first() else 0)
-    email_user  = db.query(Setting).filter(Setting.key == "email_user").first()
+    """Retourne l'état des connexions OAuth2 Microsoft ET Google."""
+    import oauth_microsoft, oauth_google
+
+    # --- Microsoft ---
+    ms_configured = bool(db.query(Setting).filter(Setting.key == "oauth_client_id").first()
+                         and db.query(Setting).filter(Setting.key == "oauth_client_id").first().value)
+    ms_connected  = oauth_microsoft.is_oauth_configured()
+    ms_expires    = db.query(Setting).filter(Setting.key == "oauth_expires_at").first()
+    ms_user       = db.query(Setting).filter(Setting.key == "email_user").first()
+
+    # --- Google ---
+    g_configured  = bool(db.query(Setting).filter(Setting.key == "google_client_id").first()
+                         and db.query(Setting).filter(Setting.key == "google_client_id").first().value)
+    g_connected   = oauth_google.is_oauth_configured()
+    g_expires     = db.query(Setting).filter(Setting.key == "google_expires_at").first()
+    g_user        = db.query(Setting).filter(Setting.key == "google_email_user").first()
+
     return {
-        "configured": configured,
-        "connected":  connected,
-        "expires_at": expires_at,
-        "email_user": email_user.value if email_user else "",
+        "microsoft": {
+            "configured": ms_configured,
+            "connected":  ms_connected,
+            "expires_at": float(ms_expires.value or 0) if ms_expires else 0,
+            "email_user": ms_user.value if ms_user else "",
+        },
+        "google": {
+            "configured": g_configured,
+            "connected":  g_connected,
+            "expires_at": float(g_expires.value or 0) if g_expires else 0,
+            "email_user": g_user.value if g_user else "",
+        },
     }
 
 
@@ -585,23 +603,23 @@ def oauth_start(current_user: User = Depends(get_current_user)):
 def oauth_callback(code: str = Query(None), state: str = Query(None),
                    error: str = Query(None), error_description: str = Query(None)):
     """Reçoit le code Microsoft, échange contre des tokens, ferme la popup."""
-    import oauth_microsoft
+    import oauth_microsoft, json
     if error:
         html = f"""<html><body><script>
-            window.opener && window.opener.postMessage({{type:'oauth_error', error:{json.dumps(error_description or error)}}}, '*');
+            window.opener && window.opener.postMessage({{type:'oauth_error',provider:'microsoft',error:{json.dumps(error_description or error)}}}, '*');
             window.close();
         </script><p>Erreur : {error_description or error}</p></body></html>"""
         return HTMLResponse(html, status_code=400)
     try:
         tokens = oauth_microsoft.exchange_code_for_tokens(code, state)
         html = """<html><body><script>
-            window.opener && window.opener.postMessage({type:'oauth_success'}, '*');
+            window.opener && window.opener.postMessage({type:'oauth_success',provider:'microsoft'}, '*');
             window.close();
         </script><p>✅ Connexion réussie ! Vous pouvez fermer cette fenêtre.</p></body></html>"""
         return HTMLResponse(html)
     except Exception as e:
         html = f"""<html><body><script>
-            window.opener && window.opener.postMessage({{type:'oauth_error', error:{json.dumps(str(e))}}}, '*');
+            window.opener && window.opener.postMessage({{type:'oauth_error',provider:'microsoft',error:{json.dumps(str(e))}}}, '*');
             window.close();
         </script><p>Erreur : {e}</p></body></html>"""
         return HTMLResponse(html, status_code=400)
@@ -609,13 +627,69 @@ def oauth_callback(code: str = Query(None), state: str = Query(None),
 
 @app.post("/email/oauth/disconnect")
 def oauth_disconnect(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Révoque et supprime les tokens OAuth stockés."""
+    """Révoque et supprime les tokens OAuth Microsoft stockés."""
     for key in ("oauth_access_token", "oauth_refresh_token", "oauth_expires_at", "oauth_token_type", "oauth_scope"):
         row = db.query(Setting).filter(Setting.key == key).first()
         if row:
             row.value = ""
     db.commit()
-    return {"message": "Déconnexion OAuth effectuée"}
+    return {"message": "Déconnexion OAuth Microsoft effectuée"}
+
+
+# ---------------------------------------------------------------------------
+# Routes OAuth2 Google
+# ---------------------------------------------------------------------------
+
+@app.get("/email/oauth/google/start")
+def oauth_google_start(current_user: User = Depends(get_current_user)):
+    """Lance le flux OAuth2 Google — redirige vers Google login."""
+    import oauth_google
+    try:
+        auth_url, state = oauth_google.build_auth_url()
+        return RedirectResponse(auth_url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/email/oauth/google/callback")
+def oauth_google_callback(
+    code: str = Query(None), state: str = Query(None),
+    error: str = Query(None), error_description: str = Query(None),
+):
+    """Reçoit le code Google, échange contre des tokens, ferme la popup."""
+    import oauth_google, json
+    if error:
+        html = f"""<html><body><script>
+            window.opener && window.opener.postMessage({{type:'oauth_error',provider:'google',error:{json.dumps(error_description or error)}}}, '*');
+            window.close();
+        </script><p>Erreur : {error_description or error}</p></body></html>"""
+        return HTMLResponse(html, status_code=400)
+    try:
+        result = oauth_google.exchange_code_for_tokens(code, state)
+        email_user = result.get("email_user", "")
+        html = f"""<html><body><script>
+            window.opener && window.opener.postMessage({{type:'oauth_success',provider:'google',email:{json.dumps(email_user)}}}, '*');
+            window.close();
+        </script><p>✅ Compte Gmail connecté ({email_user}) ! Vous pouvez fermer cette fenêtre.</p></body></html>"""
+        return HTMLResponse(html)
+    except Exception as e:
+        html = f"""<html><body><script>
+            window.opener && window.opener.postMessage({{type:'oauth_error',provider:'google',error:{json.dumps(str(e))}}}, '*');
+            window.close();
+        </script><p>Erreur : {e}</p></body></html>"""
+        return HTMLResponse(html, status_code=400)
+
+
+@app.post("/email/oauth/google/disconnect")
+def oauth_google_disconnect(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Supprime les tokens OAuth Google stockés."""
+    for key in ("google_access_token", "google_refresh_token", "google_expires_at",
+                "google_token_type", "google_scope", "google_email_user"):
+        row = db.query(Setting).filter(Setting.key == key).first()
+        if row:
+            row.value = ""
+    db.commit()
+    return {"message": "Déconnexion OAuth Google effectuée"}
 
 
 if __name__ == "__main__":

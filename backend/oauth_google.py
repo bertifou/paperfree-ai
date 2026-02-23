@@ -1,0 +1,301 @@
+"""
+oauth_google.py — Authentification OAuth2 Google pour IMAP (Gmail)
+Utilise le flux Authorization Code avec PKCE pour les comptes Gmail personnels.
+
+Flux :
+  1. GET  /email/oauth/google/start    → redirige vers Google login
+  2. GET  /email/oauth/google/callback → reçoit le code, échange contre tokens, stocke en DB
+  3. Le scheduler utilise get_valid_access_token() qui rafraîchit automatiquement si expiré
+
+Prérequis Google Cloud Console :
+  - Projet créé sur console.cloud.google.com
+  - Gmail API activée
+  - Écran de consentement OAuth configuré (type Externe, en mode Test suffit)
+  - ID client OAuth 2.0 de type "Application Web"
+  - URI de redirection : http://<votre-host>:8000/email/oauth/google/callback
+  - Scope : https://mail.google.com/
+"""
+
+import base64
+import hashlib
+import logging
+import secrets
+import time
+import urllib.parse
+
+import requests
+
+logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Endpoints Google OAuth2
+# ---------------------------------------------------------------------------
+AUTH_ENDPOINT  = "https://accounts.google.com/o/oauth2/v2/auth"
+TOKEN_ENDPOINT = "https://oauth2.googleapis.com/token"
+
+SCOPES = [
+    "https://mail.google.com/",   # Accès IMAP/SMTP complet
+    "openid",
+    "email",                      # Pour récupérer l'adresse email de l'utilisateur
+]
+
+# Stockage temporaire PKCE : state → (code_verifier, timestamp)
+_pkce_store: dict[str, tuple[str, float]] = {}
+
+
+# ---------------------------------------------------------------------------
+# Helpers PKCE
+# ---------------------------------------------------------------------------
+
+def _generate_pkce() -> tuple[str, str]:
+    """Retourne (code_verifier, code_challenge)."""
+    code_verifier  = secrets.token_urlsafe(64)
+    digest         = hashlib.sha256(code_verifier.encode()).digest()
+    code_challenge = base64.urlsafe_b64encode(digest).rstrip(b"=").decode()
+    return code_verifier, code_challenge
+
+
+# ---------------------------------------------------------------------------
+# Lecture config depuis DB
+# ---------------------------------------------------------------------------
+
+def get_oauth_config() -> dict:
+    """Lit google_client_id, google_client_secret et google_redirect_uri depuis la DB."""
+    try:
+        from database import SessionLocal, Setting
+        db = SessionLocal()
+        settings = {s.key: s.value for s in db.query(Setting).all()}
+        db.close()
+        return {
+            "client_id":     settings.get("google_client_id", ""),
+            "client_secret": settings.get("google_client_secret", ""),
+            "redirect_uri":  settings.get("google_redirect_uri",
+                                          "http://localhost:8000/email/oauth/google/callback"),
+        }
+    except Exception as e:
+        logger.error(f"[oauth-google] Erreur lecture config: {e}")
+        return {}
+
+
+# ---------------------------------------------------------------------------
+# Étape 1 : Générer l'URL d'autorisation
+# ---------------------------------------------------------------------------
+
+def build_auth_url() -> tuple[str, str]:
+    """
+    Construit l'URL de redirection Google.
+    Retourne (auth_url, state).
+    """
+    cfg = get_oauth_config()
+    if not cfg.get("client_id"):
+        raise ValueError("OAuth2 Google non configuré : google_client_id manquant dans les paramètres.")
+
+    state = secrets.token_urlsafe(16)
+    code_verifier, code_challenge = _generate_pkce()
+
+    # Nettoyer les entrées expirées (> 10 min)
+    now = time.time()
+    expired = [k for k, (_, ts) in _pkce_store.items() if now - ts > 600]
+    for k in expired:
+        del _pkce_store[k]
+    _pkce_store[state] = (code_verifier, now)
+
+    params = {
+        "client_id":             cfg["client_id"],
+        "response_type":         "code",
+        "redirect_uri":          cfg["redirect_uri"],
+        "scope":                 " ".join(SCOPES),
+        "state":                 state,
+        "code_challenge":        code_challenge,
+        "code_challenge_method": "S256",
+        "access_type":           "offline",   # Pour obtenir le refresh_token
+        "prompt":                "consent",   # Force l'affichage du consentement (refresh_token garanti)
+    }
+    url = AUTH_ENDPOINT + "?" + urllib.parse.urlencode(params)
+    logger.info(f"[oauth-google] Auth URL générée (state={state})")
+    return url, state
+
+
+# ---------------------------------------------------------------------------
+# Étape 2 : Échanger le code contre des tokens
+# ---------------------------------------------------------------------------
+
+def exchange_code_for_tokens(code: str, state: str) -> dict:
+    """
+    Reçoit le code de callback, échange contre access_token + refresh_token.
+    Récupère également l'adresse email via userinfo.
+    Stocke les tokens dans la DB.
+    """
+    cfg = get_oauth_config()
+    entry = _pkce_store.pop(state, None)
+    if not entry:
+        raise ValueError(f"State OAuth invalide ou expiré (> 10 min) : {state}")
+    code_verifier, _ = entry
+
+    data = {
+        "client_id":     cfg["client_id"],
+        "client_secret": cfg["client_secret"],
+        "code":          code,
+        "redirect_uri":  cfg["redirect_uri"],
+        "grant_type":    "authorization_code",
+        "code_verifier": code_verifier,
+    }
+
+    resp = requests.post(TOKEN_ENDPOINT, data=data, timeout=15)
+    resp.raise_for_status()
+    tokens = resp.json()
+
+    if "error" in tokens:
+        raise ValueError(f"Erreur token Google : {tokens.get('error_description', tokens['error'])}")
+
+    # Récupérer l'adresse email de l'utilisateur
+    email_user = _fetch_email_user(tokens.get("access_token", ""))
+
+    _store_tokens(tokens, email_user)
+    logger.info(f"[oauth-google] Tokens obtenus pour {email_user}")
+    return {**tokens, "email_user": email_user}
+
+
+# ---------------------------------------------------------------------------
+# Étape 3 : Rafraîchir le token
+# ---------------------------------------------------------------------------
+
+def refresh_access_token() -> str:
+    """
+    Utilise le refresh_token pour obtenir un nouvel access_token.
+    Retourne le nouvel access_token.
+    """
+    cfg           = get_oauth_config()
+    refresh_token = _load_setting("google_refresh_token")
+
+    if not refresh_token:
+        raise ValueError("Aucun refresh_token Google — re-authentifiez via /email/oauth/google/start")
+
+    data = {
+        "client_id":     cfg["client_id"],
+        "client_secret": cfg["client_secret"],
+        "refresh_token": refresh_token,
+        "grant_type":    "refresh_token",
+    }
+
+    resp = requests.post(TOKEN_ENDPOINT, data=data, timeout=15)
+    resp.raise_for_status()
+    tokens = resp.json()
+
+    if "error" in tokens:
+        raise ValueError(f"Refresh token Google invalide : {tokens.get('error_description', tokens['error'])}")
+
+    _store_tokens(tokens)
+    logger.info("[oauth-google] Access token rafraîchi")
+    return tokens["access_token"]
+
+
+# ---------------------------------------------------------------------------
+# Accès au token valide
+# ---------------------------------------------------------------------------
+
+def get_valid_access_token() -> tuple[str, str]:
+    """
+    Retourne (access_token, email_user).
+    Rafraîchit automatiquement si expiré ou expire dans < 5 min.
+    """
+    access_token = _load_setting("google_access_token")
+    expires_at   = float(_load_setting("google_expires_at") or "0")
+    email_user   = _load_setting("google_email_user") or ""
+
+    now = time.time()
+    if not access_token or now >= expires_at - 300:
+        logger.info("[oauth-google] Token expiré → rafraîchissement")
+        access_token = refresh_access_token()
+
+    return access_token, email_user
+
+
+def is_oauth_configured() -> bool:
+    """Vérifie si OAuth2 Google est configuré et qu'un refresh_token est disponible."""
+    return bool(
+        _load_setting("google_client_id") and
+        _load_setting("google_refresh_token")
+    )
+
+
+# ---------------------------------------------------------------------------
+# Connexion IMAP via OAuth2 (XOAUTH2) — identique à Microsoft
+# ---------------------------------------------------------------------------
+
+def connect_imap_oauth(host: str, user: str, access_token: str, port: int = 993):
+    """
+    Connexion IMAP Gmail en XOAUTH2.
+    Retourne une instance imaplib.IMAP4_SSL authentifiée.
+    """
+    import imaplib
+    import base64
+
+    auth_string = f"user={user}\x01auth=Bearer {access_token}\x01\x01"
+    auth_bytes  = base64.b64encode(auth_string.encode()).decode()
+
+    mail = imaplib.IMAP4_SSL(host, port)
+    mail.authenticate("XOAUTH2", lambda x: auth_bytes)
+    logger.info(f"[oauth-google] Connexion IMAP XOAUTH2 réussie : {user}@{host}")
+    return mail
+
+
+# ---------------------------------------------------------------------------
+# Helpers DB
+# ---------------------------------------------------------------------------
+
+def _fetch_email_user(access_token: str) -> str:
+    """Récupère l'adresse email Google via l'API userinfo."""
+    try:
+        resp = requests.get(
+            "https://www.googleapis.com/oauth2/v2/userinfo",
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        return resp.json().get("email", "")
+    except Exception as e:
+        logger.warning(f"[oauth-google] Impossible de récupérer l'email user : {e}")
+        return ""
+
+
+def _store_tokens(tokens: dict, email_user: str = ""):
+    """Persiste les tokens OAuth Google dans la table Setting."""
+    from database import SessionLocal, Setting
+
+    expires_at = str(time.time() + tokens.get("expires_in", 3600))
+    to_save = {
+        "google_access_token":  tokens.get("access_token", ""),
+        "google_expires_at":    expires_at,
+        "google_token_type":    tokens.get("token_type", "Bearer"),
+        "google_scope":         tokens.get("scope", ""),
+    }
+    # Le refresh_token n'est fourni qu'à la première autorisation (prompt=consent)
+    if tokens.get("refresh_token"):
+        to_save["google_refresh_token"] = tokens["refresh_token"]
+    if email_user:
+        to_save["google_email_user"] = email_user
+
+    db = SessionLocal()
+    try:
+        for key, value in to_save.items():
+            setting = db.query(Setting).filter(Setting.key == key).first()
+            if setting:
+                setting.value = value
+            else:
+                db.add(Setting(key=key, value=value))
+        db.commit()
+    finally:
+        db.close()
+
+
+def _load_setting(key: str) -> str:
+    """Lit une valeur depuis la table Setting."""
+    try:
+        from database import SessionLocal, Setting
+        db = SessionLocal()
+        row = db.query(Setting).filter(Setting.key == key).first()
+        db.close()
+        return row.value if row else ""
+    except Exception:
+        return ""

@@ -239,12 +239,13 @@
 
             <!-- OAuth2 Microsoft -->
             <div class='mt-8 pt-6 border-t'>
-                <h2 class='text-lg font-semibold mb-1'>🔐 OAuth2 Microsoft <span class='text-sm font-normal text-gray-400'>(requis pour Hotmail/Outlook)</span></h2>
-                <p class='text-xs text-gray-400 mb-4'>
+                <h2 class='text-lg font-semibold mb-1'>🔐 OAuth2 Microsoft <span class='text-sm font-normal text-gray-400'>(Hotmail / Outlook / Live)</span></h2>
+                <p class='text-xs text-gray-400 mb-3'>
                     Enregistrez une app sur
                     <a href='https://portal.azure.com' target='_blank' class='text-blue-500 underline'>portal.azure.com</a>
                     → Azure Active Directory → Inscriptions d'applications → Nouvelle inscription.<br>
-                    Type : <b>Comptes Microsoft personnels uniquement</b> · URI de redirection : <code class='bg-gray-100 px-1'>http://localhost:8000/email/oauth/callback</code>
+                    Type : <b>Comptes Microsoft personnels uniquement</b> · URI de redirection : <code class='bg-gray-100 px-1'>http://localhost:8000/email/oauth/callback</code><br>
+                    Permissions : <b>Office 365 Exchange Online</b> → <code class='bg-gray-100 px-1'>IMAP.AccessAsUser.All</code> + <code class='bg-gray-100 px-1'>offline_access</code>
                 </p>
                 <div class='space-y-3'>
                     <div class='grid grid-cols-2 gap-3'>
@@ -260,22 +261,59 @@
                     <div>
                         <label class='block text-sm font-medium text-gray-700 mb-1'>URI de redirection</label>
                         <input type='text' id='settingOauthRedirectUri' class='w-full p-2 border rounded text-sm font-mono' placeholder='http://localhost:8000/email/oauth/callback'>
-                        <p class='text-xs text-gray-400 mt-1'>Doit correspondre exactement à l'URI configurée dans Azure.</p>
                     </div>
                     <div class='flex gap-3 items-center flex-wrap'>
-                        <button onclick='saveOauthSettings()' class='bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 text-sm'>
-                            Enregistrer
-                        </button>
-                        <button onclick='startOauthFlow()' id='btnOauthConnect'
+                        <button onclick='saveOauthSettings()' class='bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 text-sm'>Enregistrer</button>
+                        <button onclick='startOauthFlow("microsoft")' id='btnOauthConnect'
                             class='bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium'>
-                            🔑 Connecter mon compte Outlook/Hotmail
+                            🔑 Connecter Outlook/Hotmail
                         </button>
-                        <button onclick='oauthDisconnect()' id='btnOauthDisconnect' class='hidden bg-red-50 text-red-600 px-4 py-2 rounded hover:bg-red-100 text-sm'>
+                        <button onclick='oauthDisconnect("microsoft")' id='btnOauthDisconnect' class='hidden bg-red-50 text-red-600 px-4 py-2 rounded hover:bg-red-100 text-sm'>
                             Déconnecter
                         </button>
                         <span id='oauthStatus' class='text-sm'></span>
                     </div>
-                    <p id='oauthSettingsSaved' class='text-green-600 text-sm hidden'>✓ Config OAuth sauvegardée</p>
+                    <p id='oauthSettingsSaved' class='text-green-600 text-sm hidden'>✓ Config OAuth Microsoft sauvegardée</p>
+                </div>
+            </div>
+
+            <!-- OAuth2 Google -->
+            <div class='mt-8 pt-6 border-t'>
+                <h2 class='text-lg font-semibold mb-1'>🔴 OAuth2 Google <span class='text-sm font-normal text-gray-400'>(Gmail)</span></h2>
+                <p class='text-xs text-gray-400 mb-3'>
+                    Créez un projet sur
+                    <a href='https://console.cloud.google.com' target='_blank' class='text-blue-500 underline'>console.cloud.google.com</a>
+                    → Activer <b>Gmail API</b> → Écran de consentement OAuth (type <b>Externe</b>, mode Test suffit).<br>
+                    Credentials → ID client OAuth 2.0 (type <b>Application Web</b>) · URI de redirection : <code class='bg-gray-100 px-1'>http://localhost:8000/email/oauth/google/callback</code><br>
+                    Scope requis : <code class='bg-gray-100 px-1'>https://mail.google.com/</code> · Si "App non vérifiée" → cliquez <b>Avancé → Continuer</b>.
+                </p>
+                <div class='space-y-3'>
+                    <div class='grid grid-cols-2 gap-3'>
+                        <div>
+                            <label class='block text-sm font-medium text-gray-700 mb-1'>Client ID Google</label>
+                            <input type='text' id='settingGoogleClientId' class='w-full p-2 border rounded text-sm font-mono' placeholder='xxxx.apps.googleusercontent.com'>
+                        </div>
+                        <div>
+                            <label class='block text-sm font-medium text-gray-700 mb-1'>Client Secret Google</label>
+                            <input type='password' id='settingGoogleClientSecret' class='w-full p-2 border rounded text-sm' placeholder='GOCSPX-...'>
+                        </div>
+                    </div>
+                    <div>
+                        <label class='block text-sm font-medium text-gray-700 mb-1'>URI de redirection</label>
+                        <input type='text' id='settingGoogleRedirectUri' class='w-full p-2 border rounded text-sm font-mono' placeholder='http://localhost:8000/email/oauth/google/callback'>
+                    </div>
+                    <div class='flex gap-3 items-center flex-wrap'>
+                        <button onclick='saveGoogleOauthSettings()' class='bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 text-sm'>Enregistrer</button>
+                        <button onclick='startOauthFlow("google")' id='btnGoogleConnect'
+                            class='bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 text-sm font-medium'>
+                            🔑 Connecter mon compte Gmail
+                        </button>
+                        <button onclick='oauthDisconnect("google")' id='btnGoogleDisconnect' class='hidden bg-red-50 text-red-600 px-4 py-2 rounded hover:bg-red-100 text-sm'>
+                            Déconnecter
+                        </button>
+                        <span id='googleOauthStatus' class='text-sm'></span>
+                    </div>
+                    <p id='googleOauthSettingsSaved' class='text-green-600 text-sm hidden'>✓ Config OAuth Google sauvegardée</p>
                 </div>
             </div>
         </div>
@@ -559,10 +597,14 @@ async function loadSettings() {
     document.getElementById('settingEmailAttachInterval').value = s.email_attach_interval_min  || '15';
     document.getElementById('settingEmailPurgeInterval').value  = s.email_purge_interval_hours || '24';
     document.getElementById('settingEmailPromoDays').value      = s.email_promo_days           || '7';
-    // OAuth
+    // OAuth Microsoft
     document.getElementById('settingOauthClientId').value     = s.oauth_client_id     || '';
     document.getElementById('settingOauthClientSecret').value = s.oauth_client_secret || '';
     document.getElementById('settingOauthRedirectUri').value  = s.oauth_redirect_uri  || 'http://localhost:8000/email/oauth/callback';
+    // OAuth Google
+    document.getElementById('settingGoogleClientId').value     = s.google_client_id     || '';
+    document.getElementById('settingGoogleClientSecret').value = s.google_client_secret || '';
+    document.getElementById('settingGoogleRedirectUri').value  = s.google_redirect_uri  || 'http://localhost:8000/email/oauth/google/callback';
     refreshOauthStatus();
 }
 
@@ -641,62 +683,100 @@ async function saveOauthSettings() {
     setTimeout(() => document.getElementById('oauthSettingsSaved').classList.add('hidden'), 3000);
 }
 
+async function saveGoogleOauthSettings() {
+    const pairs = [
+        ['google_client_id',     document.getElementById('settingGoogleClientId').value],
+        ['google_client_secret', document.getElementById('settingGoogleClientSecret').value],
+        ['google_redirect_uri',  document.getElementById('settingGoogleRedirectUri').value],
+    ];
+    for (const [k, v] of pairs) {
+        await fetch(`${API_URL}/settings?key=${k}&value=${encodeURIComponent(v)}`,
+            { method: 'POST', headers: { 'Authorization': authHeader } });
+    }
+    document.getElementById('googleOauthSettingsSaved').classList.remove('hidden');
+    setTimeout(() => document.getElementById('googleOauthSettingsSaved').classList.add('hidden'), 3000);
+}
+
 async function refreshOauthStatus() {
     try {
         const res  = await fetch(`${API_URL}/email/oauth/status`, { headers: { 'Authorization': authHeader } });
         if (!res.ok) return;
         const data = await res.json();
-        const el   = document.getElementById('oauthStatus');
-        const btnConnect    = document.getElementById('btnOauthConnect');
-        const btnDisconnect = document.getElementById('btnOauthDisconnect');
-        if (data.connected) {
-            const exp = data.expires_at ? new Date(data.expires_at * 1000).toLocaleString('fr-CA') : '?';
-            el.innerHTML = `<span class='text-green-600'>✅ Connecté (${escHtml(data.email_user)}) — expire ${exp}</span>`;
-            btnConnect.classList.add('hidden');
-            btnDisconnect.classList.remove('hidden');
-        } else if (data.configured) {
-            el.innerHTML = `<span class='text-orange-500'>⚠️ App configurée mais non connectée — cliquez "Connecter"</span>`;
-            btnConnect.classList.remove('hidden');
-            btnDisconnect.classList.add('hidden');
+
+        // --- Microsoft ---
+        const ms = data.microsoft;
+        const elMs  = document.getElementById('oauthStatus');
+        const btnMsConnect    = document.getElementById('btnOauthConnect');
+        const btnMsDisconnect = document.getElementById('btnOauthDisconnect');
+        if (ms.connected) {
+            const exp = ms.expires_at ? new Date(ms.expires_at * 1000).toLocaleString('fr-CA') : '?';
+            elMs.innerHTML = `<span class='text-green-600'>✅ Connecté (${escHtml(ms.email_user)}) — expire ${exp}</span>`;
+            btnMsConnect.classList.add('hidden');
+            btnMsDisconnect.classList.remove('hidden');
+        } else if (ms.configured) {
+            elMs.innerHTML = `<span class='text-orange-500'>⚠️ Configuré mais non connecté</span>`;
+            btnMsConnect.classList.remove('hidden');
+            btnMsDisconnect.classList.add('hidden');
         } else {
-            el.innerHTML = `<span class='text-gray-400'>Non configuré</span>`;
-            btnConnect.classList.remove('hidden');
-            btnDisconnect.classList.add('hidden');
+            elMs.innerHTML = `<span class='text-gray-400'>Non configuré</span>`;
+            btnMsConnect.classList.remove('hidden');
+            btnMsDisconnect.classList.add('hidden');
+        }
+
+        // --- Google ---
+        const g = data.google;
+        const elG  = document.getElementById('googleOauthStatus');
+        const btnGConnect    = document.getElementById('btnGoogleConnect');
+        const btnGDisconnect = document.getElementById('btnGoogleDisconnect');
+        if (g.connected) {
+            const exp = g.expires_at ? new Date(g.expires_at * 1000).toLocaleString('fr-CA') : '?';
+            elG.innerHTML = `<span class='text-green-600'>✅ Connecté (${escHtml(g.email_user)}) — expire ${exp}</span>`;
+            btnGConnect.classList.add('hidden');
+            btnGDisconnect.classList.remove('hidden');
+        } else if (g.configured) {
+            elG.innerHTML = `<span class='text-orange-500'>⚠️ Configuré mais non connecté</span>`;
+            btnGConnect.classList.remove('hidden');
+            btnGDisconnect.classList.add('hidden');
+        } else {
+            elG.innerHTML = `<span class='text-gray-400'>Non configuré</span>`;
+            btnGConnect.classList.remove('hidden');
+            btnGDisconnect.classList.add('hidden');
         }
     } catch(e) {}
 }
 
-function startOauthFlow() {
-    // Ouvre la popup Microsoft dans une nouvelle fenêtre
-    const popup = window.open(
-        `${API_URL}/email/oauth/start`,
-        'oauth_popup',
-        'width=520,height=640,resizable=yes,scrollbars=yes'
-    );
-    // Écouter le message de retour depuis la popup
+function startOauthFlow(provider) {
+    const urls = {
+        microsoft: `${API_URL}/email/oauth/start`,
+        google:    `${API_URL}/email/oauth/google/start`,
+    };
+    const popup = window.open(urls[provider], 'oauth_popup', 'width=540,height=660,resizable=yes,scrollbars=yes');
     const handler = (event) => {
-        if (event.data?.type === 'oauth_success') {
-            window.removeEventListener('message', handler);
-            popup?.close();
+        if (!event.data || event.data.provider !== provider) return;
+        window.removeEventListener('message', handler);
+        popup?.close();
+        if (event.data.type === 'oauth_success') {
+            const who = event.data.email ? ` (${event.data.email})` : '';
+            showEmailMsg(`✅ Compte ${provider === 'google' ? 'Gmail' : 'Outlook'} connecté${who} !`, 'green');
             refreshOauthStatus();
-            showEmailMsg('✅ Compte Outlook/Hotmail connecté avec succès !', 'green');
-        } else if (event.data?.type === 'oauth_error') {
-            window.removeEventListener('message', handler);
-            popup?.close();
-            showEmailMsg(`❌ Erreur OAuth : ${event.data.error}`, 'red');
+        } else if (event.data.type === 'oauth_error') {
+            showEmailMsg(`❌ Erreur OAuth ${provider} : ${event.data.error}`, 'red');
         }
     };
     window.addEventListener('message', handler);
-    // Nettoyer si la popup est fermée manuellement
     const interval = setInterval(() => {
         if (popup?.closed) { clearInterval(interval); window.removeEventListener('message', handler); }
     }, 1000);
 }
 
-async function oauthDisconnect() {
-    if (!confirm('Déconnecter le compte Outlook/Hotmail ?')) return;
-    await fetch(`${API_URL}/email/oauth/disconnect`,
-        { method: 'POST', headers: { 'Authorization': authHeader } });
+async function oauthDisconnect(provider) {
+    const labels = { microsoft: 'Outlook/Hotmail', google: 'Gmail' };
+    if (!confirm(`Déconnecter le compte ${labels[provider]} ?`)) return;
+    const endpoints = {
+        microsoft: `${API_URL}/email/oauth/disconnect`,
+        google:    `${API_URL}/email/oauth/google/disconnect`,
+    };
+    await fetch(endpoints[provider], { method: 'POST', headers: { 'Authorization': authHeader } });
     refreshOauthStatus();
 }
 
