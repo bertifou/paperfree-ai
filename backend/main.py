@@ -1,4 +1,5 @@
 import os
+import re
 import threading
 from dotenv import load_dotenv
 load_dotenv()
@@ -22,23 +23,20 @@ WATCH_DIR  = os.getenv("WATCH_DIR",  "./storage/watch")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(WATCH_DIR,  exist_ok=True)
 
-app = FastAPI(title="PaperFree-AI API", version="0.2.0")
+app = FastAPI(title="PaperFree-AI API", version="0.3.0")
 security = HTTPBasic()
 pwd_hasher = PasswordHash.recommended()
 
-# ---------------------------------------------------------------------------
-# CORS — autorise le frontend servi sur n'importe quel port local
-# ---------------------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # Restreindre en production
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # ---------------------------------------------------------------------------
-# Helpers DB & Auth
+# Helpers
 # ---------------------------------------------------------------------------
 def get_db():
     db = SessionLocal()
@@ -46,7 +44,6 @@ def get_db():
         yield db
     finally:
         db.close()
-
 
 def get_current_user(
     credentials: HTTPBasicCredentials = Depends(security),
@@ -67,14 +64,12 @@ def get_current_user(
 @app.get("/status")
 def get_status(db: Session = Depends(get_db)):
     user_exists = db.query(User).first() is not None
-    return {"setup_required": not user_exists, "version": "0.2.0"}
-
+    return {"setup_required": not user_exists, "version": "0.3.0"}
 
 @app.post("/setup")
 def setup_admin(username: str, password: str, llm_url: str = "", db: Session = Depends(get_db)):
     if db.query(User).first():
         raise HTTPException(status_code=400, detail="Setup déjà effectué")
-
     db.add(User(username=username, hashed_password=pwd_hasher.hash(password)))
     db.add(Setting(key="llm_base_url", value=llm_url or os.getenv("LLM_BASE_URL", "http://localhost:1234/v1")))
     db.add(Setting(key="llm_model",    value=os.getenv("LLM_MODEL", "local-model")))
@@ -83,27 +78,52 @@ def setup_admin(username: str, password: str, llm_url: str = "", db: Session = D
     return {"message": "Installation réussie"}
 
 # ---------------------------------------------------------------------------
-# Routes documents
+# Upload
 # ---------------------------------------------------------------------------
+@app.post("/upload")
 async def upload_document(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
-    with open(file_path, "wb") as f:
-        f.write(await file.read())
+    original_name = file.filename or "document"
+    safe_name = re.sub(r'[^\w\.\-]', '_', original_name)
+    if not safe_name:
+        safe_name = "document"
 
-    db_doc = Document(filename=file.filename, content=None, category=None, summary=None)
+    print(f"[upload] '{original_name}' → '{safe_name}' | type: {file.content_type}")
+
+    # Éviter les collisions
+    base, ext = os.path.splitext(safe_name)
+    file_path = os.path.join(UPLOAD_DIR, safe_name)
+    counter = 1
+    while os.path.exists(file_path):
+        safe_name = f"{base}_{counter}{ext}"
+        file_path = os.path.join(UPLOAD_DIR, safe_name)
+        counter += 1
+
+    content = await file.read()
+    print(f"[upload] Taille : {len(content)} octets")
+    if len(content) == 0:
+        raise HTTPException(status_code=400, detail="Fichier vide")
+
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    db_doc = Document(filename=safe_name, content=None, category=None, summary=None)
     db.add(db_doc)
     db.commit()
     db.refresh(db_doc)
 
+    print(f"[upload] Doc #{db_doc.id} créé, traitement en arrière-plan...")
     background_tasks.add_task(_run_processing, db_doc.id, file_path)
-    return {"status": "processing", "doc_id": db_doc.id}
+    return {"status": "processing", "doc_id": db_doc.id, "filename": safe_name}
 
 
+# ---------------------------------------------------------------------------
+# Routes documents
+# ---------------------------------------------------------------------------
 @app.get("/documents")
 def list_documents(
     q: str = Query(None),
@@ -113,7 +133,9 @@ def list_documents(
     query = db.query(Document)
     if q:
         query = query.filter(
-            or_(Document.content.contains(q), Document.filename.contains(q), Document.category.contains(q))
+            or_(Document.content.contains(q), Document.filename.contains(q),
+                Document.category.contains(q), Document.issuer.contains(q),
+                Document.summary.contains(q))
         )
     return query.order_by(Document.created_at.desc()).all()
 
@@ -128,13 +150,11 @@ def get_document(doc_id: int, db: Session = Depends(get_db), current_user: User 
 
 @app.patch("/documents/{doc_id}/form")
 def update_form_data(doc_id: int, form_data: dict, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    """Sauvegarde les champs du formulaire édités par l'utilisateur."""
     import json
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document introuvable")
     doc.form_data = json.dumps(form_data, ensure_ascii=False)
-    # Mettre à jour aussi les métadonnées principales si présentes
     if "category" in form_data: doc.category = form_data["category"]
     if "doc_date"  in form_data: doc.doc_date  = form_data["doc_date"]
     if "amount"    in form_data: doc.amount    = form_data["amount"]
@@ -144,79 +164,14 @@ def update_form_data(doc_id: int, form_data: dict, db: Session = Depends(get_db)
     return {"message": "Formulaire sauvegardé"}
 
 
-@app.get("/search")
-def search_documents(
-    q: str = Query(...),
-    mode: str = Query("text"),  # "text" ou "llm"
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """
-    mode=text : recherche classique full-text dans filename, content, category, issuer.
-    mode=llm  : RAG simple — on envoie les extraits pertinents au LLM qui synthétise une réponse.
-    """
-    # Recherche textuelle de base (commune aux deux modes)
-    results = db.query(Document).filter(
-        or_(
-            Document.content.contains(q),
-            Document.filename.contains(q),
-            Document.category.contains(q),
-            Document.issuer.contains(q),
-            Document.summary.contains(q),
-        )
-    ).order_by(Document.created_at.desc()).limit(10).all()
-
-    if mode == "text":
-        return {"mode": "text", "results": results, "llm_answer": None}
-
-    # Mode LLM — RAG simple
-    if not results:
-        return {"mode": "llm", "results": [], "llm_answer": "Aucun document correspondant trouvé dans la base."}
-
-    # Construire le contexte : extraits des documents trouvés
-    context_parts = []
-    for doc in results:
-        snippet = (doc.content or "")[:800]
-        context_parts.append(
-            f"[Document: {doc.filename} | Catégorie: {doc.category} | Date: {doc.doc_date} | Émetteur: {doc.issuer}]\n{snippet}"
-        )
-    context = "\n\n---\n\n".join(context_parts)
-
-    try:
-        from processor import get_llm_config
-        from openai import OpenAI
-        config = get_llm_config()
-        client = OpenAI(base_url=config["base_url"], api_key=config["api_key"])
-        response = client.chat.completions.create(
-            model=config["model"],
-            messages=[
-                {"role": "system", "content": (
-                    "Tu es un assistant qui aide à retrouver des informations dans des documents administratifs. "
-                    "Réponds en français, de façon concise, en te basant uniquement sur les documents fournis. "
-                    "Si l'information n'est pas dans les documents, dis-le clairement."
-                )},
-                {"role": "user", "content": f"Question : {q}\n\nDocuments disponibles :\n\n{context}"},
-            ],
-            temperature=0.2,
-        )
-        llm_answer = response.choices[0].message.content.strip()
-    except Exception as e:
-        llm_answer = f"Erreur LLM : {str(e)}"
-
-    return {"mode": "llm", "results": results, "llm_answer": llm_answer}
-
-
 @app.delete("/documents/{doc_id}")
 def delete_document(doc_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document introuvable")
-
-    # Supprimer le fichier physique si présent
     file_path = os.path.join(UPLOAD_DIR, doc.filename)
     if os.path.exists(file_path):
         os.remove(file_path)
-
     db.delete(doc)
     db.commit()
     return {"message": f"Document {doc_id} supprimé"}
@@ -232,14 +187,69 @@ def download_document(doc_id: int, db: Session = Depends(get_db), current_user: 
         raise HTTPException(status_code=404, detail="Fichier physique introuvable")
     return FileResponse(file_path, filename=doc.filename)
 
+
 # ---------------------------------------------------------------------------
-# Routes paramètres
+# Recherche
+# ---------------------------------------------------------------------------
+@app.get("/search")
+def search_documents(
+    q: str = Query(...),
+    mode: str = Query("text"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    results = db.query(Document).filter(
+        or_(
+            Document.content.contains(q),
+            Document.filename.contains(q),
+            Document.category.contains(q),
+            Document.issuer.contains(q),
+            Document.summary.contains(q),
+        )
+    ).order_by(Document.created_at.desc()).limit(10).all()
+
+    if mode == "text":
+        return {"mode": "text", "results": results, "llm_answer": None}
+
+    if not results:
+        return {"mode": "llm", "results": [], "llm_answer": "Aucun document correspondant trouvé."}
+
+    context_parts = []
+    for doc in results:
+        snippet = (doc.content or "")[:800]
+        context_parts.append(
+            f"[{doc.filename} | {doc.category} | {doc.doc_date} | {doc.issuer}]\n{snippet}"
+        )
+
+    try:
+        from processor import get_llm_config
+        from openai import OpenAI
+        config = get_llm_config()
+        client = OpenAI(base_url=config["base_url"], api_key=config["api_key"])
+        response = client.chat.completions.create(
+            model=config["model"],
+            messages=[
+                {"role": "system", "content": (
+                    "Tu es un assistant qui aide à retrouver des informations dans des documents administratifs. "
+                    "Réponds en français, de façon concise, uniquement à partir des documents fournis."
+                )},
+                {"role": "user", "content": f"Question : {q}\n\nDocuments :\n\n" + "\n\n---\n\n".join(context_parts)},
+            ],
+            temperature=0.2,
+        )
+        llm_answer = response.choices[0].message.content.strip()
+    except Exception as e:
+        llm_answer = f"Erreur LLM : {str(e)}"
+
+    return {"mode": "llm", "results": results, "llm_answer": llm_answer}
+
+
+# ---------------------------------------------------------------------------
+# Paramètres
 # ---------------------------------------------------------------------------
 @app.get("/settings")
 def get_settings(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    settings = db.query(Setting).all()
-    return {s.key: s.value for s in settings}
-
+    return {s.key: s.value for s in db.query(Setting).all()}
 
 @app.post("/settings")
 def update_setting(key: str, value: str, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -250,6 +260,7 @@ def update_setting(key: str, value: str, db: Session = Depends(get_db), current_
         db.add(Setting(key=key, value=value))
     db.commit()
     return {"message": f"Paramètre '{key}' mis à jour"}
+
 
 # ---------------------------------------------------------------------------
 # Background processing
@@ -267,13 +278,15 @@ def _run_processing(doc_id: int, file_path: str):
             doc.amount   = analysis.get("amount")
             doc.issuer   = analysis.get("issuer")
             db.commit()
+            print(f"[processor] Doc #{doc_id} traité : {analysis.get('category')} — {analysis.get('summary')}")
     except Exception as e:
         print(f"[processor] Erreur doc {doc_id}: {e}")
     finally:
         db.close()
 
+
 # ---------------------------------------------------------------------------
-# Watcher de dossier (thread daemon)
+# Watcher de dossier
 # ---------------------------------------------------------------------------
 def _start_folder_watcher():
     try:
@@ -288,7 +301,7 @@ def _start_folder_watcher():
                 ext = os.path.splitext(fname)[1].lower()
                 if ext not in (".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".bmp"):
                     return
-                print(f"[watcher] Nouveau fichier détecté : {fname}")
+                print(f"[watcher] Nouveau fichier : {fname}")
                 db = SessionLocal()
                 try:
                     db_doc = Document(filename=fname, content=None, category=None, summary=None)
@@ -309,7 +322,6 @@ def _start_folder_watcher():
 
 threading.Thread(target=_start_folder_watcher, daemon=True).start()
 
-# ---------------------------------------------------------------------------
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
