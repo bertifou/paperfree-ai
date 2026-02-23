@@ -1,9 +1,12 @@
 fastapi
-uvicorn
+uvicorn[standard]
 python-multipart
-pypdf
+pypdf2
 pytesseract
 pillow
 sqlalchemy
-requests\nopenai
+requests
+openai
 passlib[bcrypt]
+python-dotenv
+watchdog
