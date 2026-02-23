@@ -60,9 +60,11 @@ def _connect(host: str, user: str, password: str, port: int = 0) -> imaplib.IMAP
             hint = ""
             if "outlook" in host.lower() or "hotmail" in host.lower() or "office365" in host.lower():
                 hint = (
-                    " Outlook/Hotmail exige un mot de passe d'application : "
-                    "account.microsoft.com/security → Sécurité avancée → Mot de passe d'application. "
-                    "Assurez-vous aussi que l'accès IMAP est activé dans les paramètres Outlook."
+                    " Pour @hotmail.com/@outlook.com personnel, utilisez le serveur 'imap-mail.outlook.com' "
+                    "(outlook.office365.com est réservé aux comptes Microsoft 365 pro). "
+                    "Activez aussi l'accès IMAP : outlook.live.com → Paramètres → Courrier → "
+                    "Synchronisation du courrier → Accès IMAP. "
+                    "Mot de passe d'application : account.microsoft.com/security → Sécurité avancée."
                 )
             elif "gmail" in host.lower():
                 hint = (

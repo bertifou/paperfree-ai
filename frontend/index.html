@@ -184,10 +184,15 @@
                 <p class='text-xs text-gray-400 mb-4'>Gmail : imap.gmail.com · Outlook : outlook.office365.com</p>
                 <div class='space-y-3'>
                     <div class='grid grid-cols-2 gap-3'>
-                        <div>
-                            <label class='block text-sm font-medium text-gray-700 mb-1'>Serveur IMAP</label>
-                            <input type='text' id='settingEmailHost' class='w-full p-2 border rounded text-sm' placeholder='imap.gmail.com'>
-                        </div>
+                <div>
+                    <label class='block text-sm font-medium text-gray-700 mb-1'>Serveur IMAP</label>
+                    <input type='text' id='settingEmailHost' class='w-full p-2 border rounded text-sm' placeholder='imap-mail.outlook.com'>
+                    <p class='text-xs text-gray-400 mt-1'>
+                        Hotmail/Outlook perso : <code class='bg-gray-100 px-1 rounded cursor-pointer' onclick='document.getElementById("settingEmailHost").value="imap-mail.outlook.com"'>imap-mail.outlook.com</code> ·
+                        Microsoft 365 pro : <code class='bg-gray-100 px-1 rounded cursor-pointer' onclick='document.getElementById("settingEmailHost").value="outlook.office365.com"'>outlook.office365.com</code> ·
+                        Gmail : <code class='bg-gray-100 px-1 rounded cursor-pointer' onclick='document.getElementById("settingEmailHost").value="imap.gmail.com"'>imap.gmail.com</code>
+                    </p>
+                </div>
                         <div>
                             <label class='block text-sm font-medium text-gray-700 mb-1'>Adresse email</label>
                             <input type='text' id='settingEmailUser' class='w-full p-2 border rounded text-sm' placeholder='vous@gmail.com'>
