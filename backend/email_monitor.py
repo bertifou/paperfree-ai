@@ -55,8 +55,9 @@ def _connect(host: str, user: str, password: str, port: int = 0) -> imaplib.IMAP
         mail.login(user, password)
         return mail
     except imaplib.IMAP4.error as e:
-        msg = str(e)
-        if "LOGIN failed" in msg or "AUTHENTICATIONFAILED" in msg or "Invalid credentials" in msg:
+        raw = str(e)
+        logger.error(f"[email] Erreur IMAP brute : {raw!r}")  # Log complet pour diagnostic
+        if "LOGIN failed" in raw or "AUTHENTICATIONFAILED" in raw or "Invalid credentials" in raw:
             hint = ""
             if "outlook" in host.lower() or "hotmail" in host.lower() or "office365" in host.lower():
                 hint = (
@@ -72,7 +73,11 @@ def _connect(host: str, user: str, password: str, port: int = 0) -> imaplib.IMAP
                     "myaccount.google.com/apppasswords (2FA requis)."
                 )
             raise ValueError(f"Authentification IMAP échouée.{hint}")
-        raise
+        # Autre erreur IMAP → on la remonte avec le message brut
+        raise ValueError(f"Erreur IMAP : {raw}")
+    except OSError as e:
+        logger.error(f"[email] Erreur réseau : {e!r}")
+        raise ValueError(f"Impossible de joindre {host}:{port} — vérifiez le nom du serveur et votre réseau.")
 
 
 def _ensure_folder(mail: imaplib.IMAP4_SSL, folder: str):
