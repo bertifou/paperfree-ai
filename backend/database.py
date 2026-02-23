@@ -70,6 +70,15 @@ EMAIL_DEFAULTS = {
     "email_purge_interval_hours":  "24",
     "email_promo_days":            "7",
     "email_enabled":               "false",
+    # OAuth2 Microsoft
+    "oauth_client_id":             "",
+    "oauth_client_secret":         "",
+    "oauth_redirect_uri":          "http://localhost:8000/email/oauth/callback",
+    "oauth_access_token":          "",
+    "oauth_refresh_token":         "",
+    "oauth_expires_at":            "0",
+    "oauth_token_type":            "",
+    "oauth_scope":                 "",
 }
 
 def init_email_defaults():

@@ -8,7 +8,7 @@ load_dotenv()
 from fastapi import FastAPI, UploadFile, File, BackgroundTasks, Depends, Query, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse, HTMLResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from pwdlib import PasswordHash
@@ -520,6 +520,75 @@ def get_email_logs(
 ):
     logs = db.query(EmailLog).order_by(EmailLog.created_at.desc()).limit(limit).all()
     return logs
+
+
+# ---------------------------------------------------------------------------
+# Routes OAuth2 Microsoft
+# ---------------------------------------------------------------------------
+
+@app.get("/email/oauth/status")
+def oauth_status(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Retourne l'état de la connexion OAuth2."""
+    import oauth_microsoft
+    configured  = bool(db.query(Setting).filter(Setting.key == "oauth_client_id", Setting.value != "").first())
+    connected   = oauth_microsoft.is_oauth_configured()
+    expires_at  = float(db.query(Setting).filter(Setting.key == "oauth_expires_at").first().value or 0
+                        if db.query(Setting).filter(Setting.key == "oauth_expires_at").first() else 0)
+    email_user  = db.query(Setting).filter(Setting.key == "email_user").first()
+    return {
+        "configured": configured,
+        "connected":  connected,
+        "expires_at": expires_at,
+        "email_user": email_user.value if email_user else "",
+    }
+
+
+@app.get("/email/oauth/start")
+def oauth_start(current_user: User = Depends(get_current_user)):
+    """Lance le flux OAuth2 — redirige vers Microsoft login."""
+    import oauth_microsoft
+    try:
+        auth_url, state = oauth_microsoft.build_auth_url()
+        return RedirectResponse(auth_url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@app.get("/email/oauth/callback")
+def oauth_callback(code: str = Query(None), state: str = Query(None),
+                   error: str = Query(None), error_description: str = Query(None)):
+    """Reçoit le code Microsoft, échange contre des tokens, ferme la popup."""
+    import oauth_microsoft
+    if error:
+        html = f"""<html><body><script>
+            window.opener && window.opener.postMessage({{type:'oauth_error', error:{json.dumps(error_description or error)}}}, '*');
+            window.close();
+        </script><p>Erreur : {error_description or error}</p></body></html>"""
+        return HTMLResponse(html, status_code=400)
+    try:
+        tokens = oauth_microsoft.exchange_code_for_tokens(code, state)
+        html = """<html><body><script>
+            window.opener && window.opener.postMessage({type:'oauth_success'}, '*');
+            window.close();
+        </script><p>✅ Connexion réussie ! Vous pouvez fermer cette fenêtre.</p></body></html>"""
+        return HTMLResponse(html)
+    except Exception as e:
+        html = f"""<html><body><script>
+            window.opener && window.opener.postMessage({{type:'oauth_error', error:{json.dumps(str(e))}}}, '*');
+            window.close();
+        </script><p>Erreur : {e}</p></body></html>"""
+        return HTMLResponse(html, status_code=400)
+
+
+@app.post("/email/oauth/disconnect")
+def oauth_disconnect(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Révoque et supprime les tokens OAuth stockés."""
+    for key in ("oauth_access_token", "oauth_refresh_token", "oauth_expires_at", "oauth_token_type", "oauth_scope"):
+        row = db.query(Setting).filter(Setting.key == key).first()
+        if row:
+            row.value = ""
+    db.commit()
+    return {"message": "Déconnexion OAuth effectuée"}
 
 
 if __name__ == "__main__":

@@ -44,40 +44,47 @@ def _decode_header(value: str) -> str:
 
 def _connect(host: str, user: str, password: str, port: int = 0) -> imaplib.IMAP4_SSL:
     """
-    Connexion IMAP intelligente :
-    - Port 993 (défaut SSL) pour imap.gmail.com, outlook.office365.com, etc.
-    - Détecte automatiquement le port si non spécifié.
+    Connexion IMAP — supporte deux modes :
+    - OAuth2 XOAUTH2 : si oauth_microsoft.is_oauth_configured() → utilisé automatiquement
+    - Basique LOGIN  : sinon, utilise user/password (Gmail avec App Password, etc.)
     """
     if port == 0:
-        port = 993  # SSL standard
+        port = 993
+
+    # Tenter OAuth2 en priorité si configuré
+    try:
+        import oauth_microsoft
+        if oauth_microsoft.is_oauth_configured():
+            access_token, oauth_user = oauth_microsoft.get_valid_access_token()
+            effective_user = oauth_user or user
+            return oauth_microsoft.connect_imap_oauth(host, effective_user, access_token, port)
+    except Exception as e:
+        logger.warning(f"[email] OAuth2 indisponible, tentative login basique : {e}")
+
+    # Fallback : authentification basique
     try:
         mail = imaplib.IMAP4_SSL(host, port)
         mail.login(user, password)
         return mail
     except imaplib.IMAP4.error as e:
         raw = str(e)
-        logger.error(f"[email] Erreur IMAP brute : {raw!r}")  # Log complet pour diagnostic
+        logger.error(f"[email] Erreur IMAP brute : {raw!r}")
         if "LOGIN failed" in raw or "AUTHENTICATIONFAILED" in raw or "Invalid credentials" in raw:
             hint = ""
             if "outlook" in host.lower() or "hotmail" in host.lower() or "office365" in host.lower():
                 hint = (
-                    " Pour @hotmail.com/@outlook.com personnel, utilisez le serveur 'imap-mail.outlook.com' "
-                    "(outlook.office365.com est réservé aux comptes Microsoft 365 pro). "
-                    "Activez aussi l'accès IMAP : outlook.live.com → Paramètres → Courrier → "
-                    "Synchronisation du courrier → Accès IMAP. "
-                    "Mot de passe d'application : account.microsoft.com/security → Sécurité avancée."
+                    " Outlook/Hotmail bloque l'auth basique. Utilisez OAuth2 : "
+                    "configurez client_id/secret dans Paramètres et cliquez 'Connecter Outlook'."
                 )
             elif "gmail" in host.lower():
                 hint = (
-                    " Gmail exige un mot de passe d'application (App Password) : "
-                    "myaccount.google.com/apppasswords (2FA requis)."
+                    " Gmail exige un App Password : myaccount.google.com/apppasswords (2FA requis)."
                 )
             raise ValueError(f"Authentification IMAP échouée.{hint}")
-        # Autre erreur IMAP → on la remonte avec le message brut
         raise ValueError(f"Erreur IMAP : {raw}")
     except OSError as e:
         logger.error(f"[email] Erreur réseau : {e!r}")
-        raise ValueError(f"Impossible de joindre {host}:{port} — vérifiez le nom du serveur et votre réseau.")
+        raise ValueError(f"Impossible de joindre {host}:{port} — vérifiez le serveur et votre réseau.")
 
 
 def _ensure_folder(mail: imaplib.IMAP4_SSL, folder: str):
