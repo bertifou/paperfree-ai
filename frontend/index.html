@@ -51,6 +51,7 @@
             <h1 class='text-xl font-bold text-gray-800'>📄 PaperFree-AI</h1>
             <div class='flex gap-3'>
                 <button onclick='showTab("docs")' id='btnDocs' class='text-sm px-3 py-1 rounded tab-active'>Documents</button>
+                <button onclick='showTab("email")' id='btnEmail' class='text-sm px-3 py-1 rounded text-gray-500'>📧 Emails</button>
                 <button onclick='showTab("settings")' id='btnSettings' class='text-sm px-3 py-1 rounded text-gray-500'>Paramètres</button>
                 <button onclick='logout()' class='text-sm text-red-400 hover:text-red-600'>Déconnexion</button>
             </div>
@@ -102,6 +103,58 @@
             </div>
         </div>
 
+        <!-- TAB EMAIL -->
+        <div id='tabEmail' class='hidden space-y-4'>
+
+            <!-- Barre d'actions -->
+            <div class='bg-white rounded-xl shadow-sm p-4 flex flex-wrap gap-3 items-center'>
+                <select id='emailFolderSelect' onchange='loadEmails()'
+                    class='border rounded px-3 py-1.5 text-sm text-gray-700 bg-gray-50'>
+                    <option value='INBOX'>INBOX</option>
+                </select>
+                <button onclick='loadEmails()'
+                    class='bg-blue-500 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-600'>🔄 Actualiser</button>
+                <button onclick='syncAttachments()'
+                    class='bg-green-500 text-white px-4 py-1.5 rounded text-sm hover:bg-green-600'>📎 Sync pièces jointes</button>
+                <button onclick='purgePromo(false)'
+                    class='bg-orange-500 text-white px-4 py-1.5 rounded text-sm hover:bg-orange-600'>🗑 Purger promotionnels</button>
+                <button onclick='purgePromo(true)'
+                    class='bg-gray-200 text-gray-700 px-4 py-1.5 rounded text-sm hover:bg-gray-300'>👁 Simuler purge</button>
+                <span id='emailActionMsg' class='text-sm text-green-600 hidden'></span>
+            </div>
+
+            <!-- Stats rapides -->
+            <div id='emailStats' class='hidden bg-white rounded-xl shadow-sm p-4 text-sm text-gray-600'></div>
+
+            <!-- Liste des emails -->
+            <div class='bg-white rounded-xl shadow-sm overflow-hidden'>
+                <div id='emailLoading' class='hidden p-6 text-center text-gray-400 text-sm'>Chargement...</div>
+                <div id='emailEmpty'   class='hidden p-6 text-center text-gray-400 text-sm'>Aucun email dans ce dossier.</div>
+                <table class='w-full text-sm' id='emailTable'>
+                    <thead class='bg-gray-50 text-xs text-gray-500 uppercase'>
+                        <tr>
+                            <th class='px-4 py-2 text-left w-6'></th>
+                            <th class='px-4 py-2 text-left'>Expéditeur</th>
+                            <th class='px-4 py-2 text-left'>Sujet</th>
+                            <th class='px-4 py-2 text-left'>Date</th>
+                            <th class='px-4 py-2 text-center'>PJ</th>
+                            <th class='px-4 py-2 text-right'>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id='emailList'></tbody>
+                </table>
+            </div>
+
+            <!-- Historique des logs -->
+            <div class='bg-white rounded-xl shadow-sm p-4'>
+                <div class='flex items-center justify-between mb-3'>
+                    <h3 class='text-sm font-semibold text-gray-600'>HISTORIQUE DES ACTIONS</h3>
+                    <button onclick='loadEmailLogs()' class='text-xs text-blue-500 hover:underline'>Actualiser</button>
+                </div>
+                <div id='emailLogs' class='max-h-48 overflow-y-auto space-y-1'></div>
+            </div>
+        </div>
+
         <!-- TAB SETTINGS -->
         <div id='tabSettings' class='hidden bg-white rounded-xl shadow-sm p-6 max-w-lg'>
             <h2 class='text-lg font-semibold mb-4'>Paramètres LLM</h2>
@@ -123,6 +176,60 @@
                     Enregistrer
                 </button>
                 <p id='settingsSaved' class='text-green-600 text-sm hidden'>✓ Paramètres enregistrés</p>
+            </div>
+
+            <!-- Paramètres Email -->
+            <div class='mt-8 pt-6 border-t'>
+                <h2 class='text-lg font-semibold mb-1'>📧 Compte Email IMAP</h2>
+                <p class='text-xs text-gray-400 mb-4'>Gmail : imap.gmail.com · Outlook : outlook.office365.com</p>
+                <div class='space-y-3'>
+                    <div class='grid grid-cols-2 gap-3'>
+                        <div>
+                            <label class='block text-sm font-medium text-gray-700 mb-1'>Serveur IMAP</label>
+                            <input type='text' id='settingEmailHost' class='w-full p-2 border rounded text-sm' placeholder='imap.gmail.com'>
+                        </div>
+                        <div>
+                            <label class='block text-sm font-medium text-gray-700 mb-1'>Adresse email</label>
+                            <input type='text' id='settingEmailUser' class='w-full p-2 border rounded text-sm' placeholder='vous@gmail.com'>
+                        </div>
+                    </div>
+                    <div>
+                        <label class='block text-sm font-medium text-gray-700 mb-1'>Mot de passe (ou mot de passe d'application)</label>
+                        <input type='password' id='settingEmailPass' class='w-full p-2 border rounded text-sm' placeholder='••••••••'>
+                    </div>
+                    <div class='grid grid-cols-2 gap-3'>
+                        <div>
+                            <label class='block text-sm font-medium text-gray-700 mb-1'>Dossier surveillé</label>
+                            <input type='text' id='settingEmailFolder' class='w-full p-2 border rounded text-sm' placeholder='INBOX'>
+                        </div>
+                        <div>
+                            <label class='block text-sm font-medium text-gray-700 mb-1'>Dossier "Traité"</label>
+                            <input type='text' id='settingEmailTreated' class='w-full p-2 border rounded text-sm' placeholder='PaperFree-Traité'>
+                        </div>
+                    </div>
+                    <div class='grid grid-cols-3 gap-3'>
+                        <div>
+                            <label class='block text-sm font-medium text-gray-700 mb-1'>Sync PJ (min)</label>
+                            <input type='number' id='settingEmailAttachInterval' class='w-full p-2 border rounded text-sm' placeholder='15'>
+                        </div>
+                        <div>
+                            <label class='block text-sm font-medium text-gray-700 mb-1'>Purge (heures)</label>
+                            <input type='number' id='settingEmailPurgeInterval' class='w-full p-2 border rounded text-sm' placeholder='24'>
+                        </div>
+                        <div>
+                            <label class='block text-sm font-medium text-gray-700 mb-1'>Âge promo (jours)</label>
+                            <input type='number' id='settingEmailPromoDays' class='w-full p-2 border rounded text-sm' placeholder='7'>
+                        </div>
+                    </div>
+                    <button onclick='saveEmailSettings()' class='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm'>
+                        Enregistrer la config email
+                    </button>
+                    <button onclick='testEmailConnection()' class='ml-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm'>
+                        🔌 Tester la connexion
+                    </button>
+                    <p id='emailSettingsSaved' class='text-green-600 text-sm hidden mt-1'>✓ Config email sauvegardée</p>
+                    <p id='emailTestResult'   class='text-sm mt-1 hidden'></p>
+                </div>
             </div>
         </div>
 
@@ -186,10 +293,13 @@ function logout() {
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 function showTab(name) {
-    document.getElementById('tabDocs').classList.toggle('hidden', name !== 'docs');
+    document.getElementById('tabDocs').classList.toggle('hidden',     name !== 'docs');
+    document.getElementById('tabEmail').classList.toggle('hidden',    name !== 'email');
     document.getElementById('tabSettings').classList.toggle('hidden', name !== 'settings');
     document.getElementById('btnDocs').className     = 'text-sm px-3 py-1 rounded ' + (name==='docs'     ? 'tab-active' : 'text-gray-500');
+    document.getElementById('btnEmail').className    = 'text-sm px-3 py-1 rounded ' + (name==='email'    ? 'tab-active' : 'text-gray-500');
     document.getElementById('btnSettings').className = 'text-sm px-3 py-1 rounded ' + (name==='settings' ? 'tab-active' : 'text-gray-500');
+    if (name === 'email') { loadEmailFolders(); loadEmails(); loadEmailLogs(); }
 }
 
 // ─── Documents ────────────────────────────────────────────────────────────────
@@ -393,6 +503,15 @@ async function loadSettings() {
     document.getElementById('settingLlmUrl').value   = s.llm_base_url || '';
     document.getElementById('settingLlmModel').value = s.llm_model    || '';
     document.getElementById('settingLlmKey').value   = s.llm_api_key  || '';
+    // Email
+    document.getElementById('settingEmailHost').value           = s.email_host                 || '';
+    document.getElementById('settingEmailUser').value           = s.email_user                 || '';
+    document.getElementById('settingEmailPass').value           = s.email_password             || '';
+    document.getElementById('settingEmailFolder').value         = s.email_folder               || 'INBOX';
+    document.getElementById('settingEmailTreated').value        = s.email_treated_folder       || 'PaperFree-Traité';
+    document.getElementById('settingEmailAttachInterval').value = s.email_attach_interval_min  || '15';
+    document.getElementById('settingEmailPurgeInterval').value  = s.email_purge_interval_hours || '24';
+    document.getElementById('settingEmailPromoDays').value      = s.email_promo_days           || '7';
 }
 
 async function saveSettings() {
@@ -408,6 +527,201 @@ async function saveSettings() {
     const el = document.getElementById('settingsSaved');
     el.classList.remove('hidden');
     setTimeout(() => el.classList.add('hidden'), 2000);
+}
+
+async function saveEmailSettings() {
+    const pairs = [
+        ['email_host',                 document.getElementById('settingEmailHost').value],
+        ['email_user',                 document.getElementById('settingEmailUser').value],
+        ['email_password',             document.getElementById('settingEmailPass').value],
+        ['email_folder',               document.getElementById('settingEmailFolder').value],
+        ['email_treated_folder',       document.getElementById('settingEmailTreated').value],
+        ['email_attach_interval_min',  document.getElementById('settingEmailAttachInterval').value],
+        ['email_purge_interval_hours', document.getElementById('settingEmailPurgeInterval').value],
+        ['email_promo_days',           document.getElementById('settingEmailPromoDays').value],
+    ];
+    for (const [k, v] of pairs) {
+        await fetch(`${API_URL}/settings?key=${k}&value=${encodeURIComponent(v)}`,
+            { method: 'POST', headers: { 'Authorization': authHeader } });
+    }
+    const el = document.getElementById('emailSettingsSaved');
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 3000);
+}
+
+async function testEmailConnection() {
+    const res = await fetch(`${API_URL}/email/folders`, { headers: { 'Authorization': authHeader } });
+    const el = document.getElementById('emailTestResult');
+    el.classList.remove('hidden');
+    if (res.ok) {
+        const data = await res.json();
+        el.textContent = `✅ Connexion réussie — ${data.folders.length} dossier(s) trouvé(s)`;
+        el.className = 'text-sm mt-1 text-green-600';
+    } else {
+        const err = await res.json();
+        el.textContent = `❌ Erreur : ${err.detail || 'Connexion impossible'}`;
+        el.className = 'text-sm mt-1 text-red-600';
+    }
+    setTimeout(() => el.classList.add('hidden'), 5000);
+}
+
+// ─── Email ────────────────────────────────────────────────────────────────────
+const EMAIL_CATEGORY_COLORS = {
+    'Promotionnel': 'bg-orange-100 text-orange-700',
+    'Facture':      'bg-blue-100 text-blue-700',
+    'Notification': 'bg-yellow-100 text-yellow-700',
+    'Personnel':    'bg-green-100 text-green-700',
+    'Autre':        'bg-gray-100 text-gray-500',
+};
+
+async function loadEmailFolders() {
+    try {
+        const res = await fetch(`${API_URL}/email/folders`, { headers: { 'Authorization': authHeader } });
+        if (!res.ok) return;
+        const data = await res.json();
+        const sel = document.getElementById('emailFolderSelect');
+        const current = sel.value;
+        sel.innerHTML = '';
+        data.folders.forEach(f => {
+            const opt = document.createElement('option');
+            opt.value = f; opt.textContent = f;
+            if (f === current) opt.selected = true;
+            sel.appendChild(opt);
+        });
+    } catch(e) {}
+}
+
+async function loadEmails() {
+    const folder = document.getElementById('emailFolderSelect').value || 'INBOX';
+    document.getElementById('emailLoading').classList.remove('hidden');
+    document.getElementById('emailEmpty').classList.add('hidden');
+    document.getElementById('emailList').innerHTML = '';
+    document.getElementById('emailStats').classList.add('hidden');
+    try {
+        const res = await fetch(`${API_URL}/email/messages?folder=${encodeURIComponent(folder)}&limit=50`,
+            { headers: { 'Authorization': authHeader } });
+        document.getElementById('emailLoading').classList.add('hidden');
+        if (!res.ok) {
+            const err = await res.json();
+            document.getElementById('emailEmpty').textContent = `⚠️ ${err.detail || 'Erreur'}`;
+            document.getElementById('emailEmpty').classList.remove('hidden');
+            return;
+        }
+        const data = await res.json();
+        if (!data.messages.length) {
+            document.getElementById('emailEmpty').classList.remove('hidden');
+            return;
+        }
+        const unread = data.messages.filter(m => !m.is_read).length;
+        const withPJ = data.messages.filter(m => m.has_attachment).length;
+        const stats  = document.getElementById('emailStats');
+        stats.textContent = `${data.count} email(s) — ${unread} non lu(s) — ${withPJ} avec pièce(s) jointe(s)`;
+        stats.classList.remove('hidden');
+
+        const tbody = document.getElementById('emailList');
+        tbody.innerHTML = data.messages.map(m => {
+            const date = new Date(m.date);
+            const dateStr = isNaN(date) ? m.date : date.toLocaleString('fr-CA', {dateStyle:'short', timeStyle:'short'});
+            return `<tr class='border-t hover:bg-gray-50 ${m.is_read ? "text-gray-500" : "font-medium text-gray-800"}'>
+                <td class='px-4 py-2'>${m.is_read ? '' : '<span class="inline-block w-2 h-2 rounded-full bg-blue-500"></span>'}</td>
+                <td class='px-4 py-2 max-w-xs truncate text-xs'>${escHtml(m.sender)}</td>
+                <td class='px-4 py-2 max-w-sm truncate'>${escHtml(m.subject)}</td>
+                <td class='px-4 py-2 text-xs text-gray-400 whitespace-nowrap'>${dateStr}</td>
+                <td class='px-4 py-2 text-center'>${m.has_attachment ? '📎' : ''}</td>
+                <td class='px-4 py-2 text-right whitespace-nowrap'>
+                    <button onclick='emailMarkRead("${escAttr(m.uid)}", "${escAttr(folder)}")'
+                        class='text-xs text-blue-500 hover:underline mr-2' title='Marquer comme lu'>✓ Lu</button>
+                    <button onclick='emailMove("${escAttr(m.uid)}", "${escAttr(folder)}")'
+                        class='text-xs text-green-500 hover:underline mr-2' title='Déplacer'>📁</button>
+                    <button onclick='emailDelete("${escAttr(m.uid)}", "${escAttr(folder)}")'
+                        class='text-xs text-red-400 hover:underline' title='Supprimer'>🗑</button>
+                </td>
+            </tr>`;
+        }).join('');
+    } catch(e) {
+        document.getElementById('emailLoading').classList.add('hidden');
+    }
+}
+
+async function emailDelete(uid, folder) {
+    if (!confirm('Supprimer cet email ?')) return;
+    await fetch(`${API_URL}/email/messages/${uid}?folder=${encodeURIComponent(folder)}`,
+        { method: 'DELETE', headers: { 'Authorization': authHeader } });
+    loadEmails();
+}
+
+async function emailMove(uid, folder) {
+    const dest = prompt('Dossier de destination :', 'PaperFree-Traité');
+    if (!dest) return;
+    await fetch(`${API_URL}/email/messages/${uid}/move?source_folder=${encodeURIComponent(folder)}&destination_folder=${encodeURIComponent(dest)}`,
+        { method: 'POST', headers: { 'Authorization': authHeader } });
+    loadEmails();
+}
+
+async function emailMarkRead(uid, folder) {
+    await fetch(`${API_URL}/email/messages/${uid}/read?folder=${encodeURIComponent(folder)}`,
+        { method: 'POST', headers: { 'Authorization': authHeader } });
+    loadEmails();
+}
+
+async function syncAttachments() {
+    showEmailMsg('Synchronisation lancée...', 'blue');
+    const res = await fetch(`${API_URL}/email/sync-attachments`,
+        { method: 'POST', headers: { 'Authorization': authHeader } });
+    if (res.ok) showEmailMsg('✅ Sync pièces jointes en cours — vérifiez l\'onglet Documents', 'green');
+    else        showEmailMsg('❌ Erreur lors de la synchronisation', 'red');
+}
+
+async function purgePromo(dryRun) {
+    const label = dryRun ? 'Simulation' : 'Purge';
+    showEmailMsg(`${label} en cours...`, 'blue');
+    const res = await fetch(`${API_URL}/email/purge-promotional?dry_run=${dryRun}`,
+        { method: 'POST', headers: { 'Authorization': authHeader } });
+    if (res.ok) {
+        const r = await res.json();
+        const msg = dryRun
+            ? `👁 Simulation : ${r.analysed} analysé(s), ${r.deleted} promotionnel(s) détecté(s)`
+            : `✅ Purge : ${r.deleted} email(s) promotionnel(s) supprimé(s)`;
+        showEmailMsg(msg, 'green');
+        if (!dryRun) loadEmails();
+    } else {
+        showEmailMsg('❌ Erreur lors de la purge', 'red');
+    }
+}
+
+function showEmailMsg(msg, color) {
+    const el = document.getElementById('emailActionMsg');
+    el.textContent = msg;
+    el.className = `text-sm ${color === 'green' ? 'text-green-600' : color === 'red' ? 'text-red-500' : 'text-blue-500'}`;
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 5000);
+}
+
+async function loadEmailLogs() {
+    try {
+        const res = await fetch(`${API_URL}/email/logs?limit=50`, { headers: { 'Authorization': authHeader } });
+        if (!res.ok) return;
+        const logs = await res.json();
+        const container = document.getElementById('emailLogs');
+        if (!logs.length) { container.innerHTML = '<p class="text-xs text-gray-400">Aucune action enregistrée.</p>'; return; }
+        const ACTION_LABELS = {
+            'download_attachment': '📎 Pièce jointe',
+            'delete_promo':        '🗑 Promo supprimé',
+            'manual_delete':       '🗑 Suppression manuelle',
+            'move':                '📁 Déplacé',
+            'purge_promo':         '🧹 Purge promotionnels',
+        };
+        container.innerHTML = logs.map(l => {
+            const dt = new Date(l.created_at).toLocaleString('fr-CA', {dateStyle:'short', timeStyle:'short'});
+            const label = ACTION_LABELS[l.action] || l.action;
+            return `<div class='flex items-start gap-2 text-xs text-gray-600 py-1 border-b border-gray-50'>
+                <span class='text-gray-400 whitespace-nowrap'>${dt}</span>
+                <span class='font-medium'>${label}</span>
+                ${l.subject ? `<span class='truncate text-gray-500'>${escHtml(l.subject)}</span>` : ''}
+                ${l.detail  ? `<span class='text-gray-400 truncate'>${escHtml(l.detail)}</span>` : ''}
+            </div>`;
+        }).join('');
+    } catch(e) {}
 }
 
 // ─── Upload ───────────────────────────────────────────────────────────────────

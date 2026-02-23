@@ -41,4 +41,45 @@ class Setting(Base):
     value = Column(String)
 
 
+class EmailLog(Base):
+    """Historique des actions automatiques du module email."""
+    __tablename__ = "email_logs"
+    id         = Column(Integer, primary_key=True, index=True)
+    action     = Column(String, nullable=False)   # download_attachment | delete_promo | manual_delete | move
+    uid        = Column(String, nullable=True)    # UID IMAP du message
+    subject    = Column(String, nullable=True)
+    sender     = Column(String, nullable=True)
+    folder     = Column(String, nullable=True)
+    detail     = Column(Text,   nullable=True)    # JSON supplémentaire
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
 Base.metadata.create_all(bind=engine)
+
+
+# ---------------------------------------------------------------------------
+# Valeurs par défaut des settings email (insérées si absentes)
+# ---------------------------------------------------------------------------
+EMAIL_DEFAULTS = {
+    "email_host":                  "",
+    "email_user":                  "",
+    "email_password":              "",
+    "email_folder":                "INBOX",
+    "email_treated_folder":        "PaperFree-Traité",
+    "email_attach_interval_min":   "15",
+    "email_purge_interval_hours":  "24",
+    "email_promo_days":            "7",
+    "email_enabled":               "false",
+}
+
+def init_email_defaults():
+    db = SessionLocal()
+    try:
+        for key, value in EMAIL_DEFAULTS.items():
+            if not db.query(Setting).filter(Setting.key == key).first():
+                db.add(Setting(key=key, value=value))
+        db.commit()
+    finally:
+        db.close()
+
+init_email_defaults()

@@ -11,3 +11,4 @@ pwdlib[bcrypt]
 pwdlib[argon2]
 python-dotenv
 watchdog
+apscheduler

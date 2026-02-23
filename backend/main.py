@@ -13,7 +13,8 @@ from sqlalchemy import or_
 from pwdlib import PasswordHash
 
 from processor import process_document
-from database import SessionLocal, Document, User, Setting
+from database import SessionLocal, Document, User, Setting, EmailLog
+import email_monitor
 
 # ---------------------------------------------------------------------------
 # Config
@@ -321,6 +322,165 @@ def _start_folder_watcher():
 
 
 threading.Thread(target=_start_folder_watcher, daemon=True).start()
+
+# ---------------------------------------------------------------------------
+# Démarrage du scheduler email
+# ---------------------------------------------------------------------------
+email_monitor.scheduler.start()
+
+
+# ---------------------------------------------------------------------------
+# Routes Email
+# ---------------------------------------------------------------------------
+
+def _get_email_creds(db: Session):
+    """Lit host/user/password depuis la DB. Lève 400 si non configuré."""
+    settings = {s.key: s.value for s in db.query(Setting).all()}
+    host = settings.get("email_host", "")
+    user = settings.get("email_user", "")
+    pwd  = settings.get("email_password", "")
+    if not (host and user and pwd):
+        raise HTTPException(status_code=400, detail="Compte email non configuré. Allez dans Paramètres > Email.")
+    return host, user, pwd, settings
+
+
+@app.get("/email/folders")
+def get_email_folders(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    host, user, pwd, _ = _get_email_creds(db)
+    folders = email_monitor.list_folders(host, user, pwd)
+    return {"folders": folders}
+
+
+@app.get("/email/messages")
+def get_email_messages(
+    folder: str = Query("INBOX"),
+    limit: int  = Query(50),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    host, user, pwd, _ = _get_email_creds(db)
+    messages = email_monitor.list_emails(host, user, pwd, folder=folder, limit=limit)
+    return {"folder": folder, "messages": messages, "count": len(messages)}
+
+
+@app.delete("/email/messages/{uid}")
+def delete_email_message(
+    uid: str,
+    folder: str = Query("INBOX"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    host, user, pwd, _ = _get_email_creds(db)
+    ok = email_monitor.delete_email(host, user, pwd, uid=uid, folder=folder)
+    if not ok:
+        raise HTTPException(status_code=500, detail="Erreur lors de la suppression")
+    db.add(EmailLog(action="manual_delete", uid=uid, folder=folder))
+    db.commit()
+    return {"message": f"Email {uid} supprimé"}
+
+
+@app.post("/email/messages/{uid}/move")
+def move_email_message(
+    uid: str,
+    source_folder: str      = Query("INBOX"),
+    destination_folder: str = Query("PaperFree-Traité"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    host, user, pwd, _ = _get_email_creds(db)
+    ok = email_monitor.move_email(host, user, pwd, uid=uid,
+                                  source_folder=source_folder,
+                                  destination_folder=destination_folder)
+    if not ok:
+        raise HTTPException(status_code=500, detail="Erreur lors du déplacement")
+    db.add(EmailLog(action="move", uid=uid, folder=source_folder,
+                    detail=destination_folder))
+    db.commit()
+    return {"message": f"Email {uid} déplacé vers {destination_folder}"}
+
+
+@app.post("/email/messages/{uid}/read")
+def mark_email_read(
+    uid: str,
+    folder: str = Query("INBOX"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    host, user, pwd, _ = _get_email_creds(db)
+    email_monitor.mark_as_read(host, user, pwd, uid=uid, folder=folder)
+    return {"message": "Marqué comme lu"}
+
+
+@app.post("/email/sync-attachments")
+def sync_email_attachments(
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Déclenche manuellement le téléchargement des pièces jointes."""
+    host, user, pwd, settings = _get_email_creds(db)
+    treated = settings.get("email_treated_folder", "PaperFree-Traité")
+    folder  = settings.get("email_folder", "INBOX")
+
+    def _run():
+        downloaded = email_monitor.download_attachments(
+            host, user, pwd, UPLOAD_DIR,
+            folder=folder, treated_folder=treated,
+        )
+        if downloaded:
+            email_monitor._trigger_processing(downloaded)
+            inner_db = SessionLocal()
+            try:
+                for item in downloaded:
+                    inner_db.add(EmailLog(
+                        action="download_attachment",
+                        uid=item["uid"], subject=item["subject"],
+                        folder=folder, detail=item["filename"],
+                    ))
+                inner_db.commit()
+            finally:
+                inner_db.close()
+
+    background_tasks.add_task(_run)
+    return {"message": "Synchronisation des pièces jointes lancée en arrière-plan"}
+
+
+@app.post("/email/purge-promotional")
+def purge_promotional(
+    dry_run: bool = Query(False),
+    background_tasks: BackgroundTasks = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Déclenche manuellement la purge des emails promotionnels."""
+    host, user, pwd, settings = _get_email_creds(db)
+    from processor import get_llm_config
+    llm_config = get_llm_config()
+    folder     = settings.get("email_folder", "INBOX")
+    promo_days = int(settings.get("email_promo_days", "7"))
+
+    report = email_monitor.purge_promotional_emails(
+        host, user, pwd,
+        llm_config=llm_config,
+        folder=folder,
+        older_than_days=promo_days,
+        dry_run=dry_run,
+    )
+    if not dry_run:
+        db.add(EmailLog(action="purge_promo", detail=str(report)))
+        db.commit()
+    return report
+
+
+@app.get("/email/logs")
+def get_email_logs(
+    limit: int = Query(100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    logs = db.query(EmailLog).order_by(EmailLog.created_at.desc()).limit(limit).all()
+    return logs
+
 
 if __name__ == "__main__":
     import uvicorn
