@@ -4,7 +4,10 @@ from sqlalchemy.orm import sessionmaker
 import datetime
 import os
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./paperfree.db"
+import os
+_db_dir = os.getenv("DB_DIR", "./storage")
+os.makedirs(_db_dir, exist_ok=True)
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{_db_dir}/paperfree.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

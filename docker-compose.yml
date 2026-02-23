@@ -9,12 +9,12 @@ services:
       - "8000:8000"
     volumes:
       - ./storage:/app/storage
-      - ./paperfree.db:/app/paperfree.db
     env_file:
       - .env
     environment:
       - UPLOAD_DIR=/app/storage/uploads
       - WATCH_DIR=/app/storage/watch
+      - DB_DIR=/app/storage
 
   frontend:
     image: nginx:alpine
