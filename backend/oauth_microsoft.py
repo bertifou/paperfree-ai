@@ -233,7 +233,7 @@ def connect_imap_oauth(host: str, user: str, access_token: str, port: int = 993)
     import base64
 
     auth_string = f"user={user}\x01auth=Bearer {access_token}\x01\x01"
-    auth_bytes  = base64.b64encode(auth_string.encode()).decode()
+    auth_bytes  = base64.b64encode(auth_string.encode("utf-8"))
 
     mail = imaplib.IMAP4_SSL(host, port)
     mail.authenticate("XOAUTH2", lambda x: auth_bytes)
