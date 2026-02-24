@@ -60,6 +60,21 @@ Base.metadata.create_all(bind=engine)
 # ---------------------------------------------------------------------------
 # Valeurs par défaut des settings email (insérées si absentes)
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Valeurs par défaut des settings OCR / Vision
+# ---------------------------------------------------------------------------
+OCR_VISION_DEFAULTS = {
+    # Correction OCR par LLM
+    "ocr_llm_correction":         "true",   # Activer la correction LLM du texte OCR
+    "ocr_correction_threshold":   "80",     # Score confiance (%) sous lequel on corrige toujours
+    # Vision
+    "llm_vision_enabled":         "false",  # Activer l'analyse par vision (image → LLM multimodal)
+    "llm_vision_provider":        "local",  # local | openai | anthropic
+    "llm_vision_model":           "",       # Vide = utiliser le modèle principal
+    "llm_vision_api_key":         "",       # Clé API si provider externe
+    "llm_vision_base_url":        "",       # URL si provider local différent du LLM principal
+}
+
 EMAIL_DEFAULTS = {
     "email_host":                  "",
     "email_user":                  "",
@@ -94,7 +109,7 @@ EMAIL_DEFAULTS = {
 def init_email_defaults():
     db = SessionLocal()
     try:
-        for key, value in EMAIL_DEFAULTS.items():
+        for key, value in {**OCR_VISION_DEFAULTS, **EMAIL_DEFAULTS}.items():
             if not db.query(Setting).filter(Setting.key == key).first():
                 db.add(Setting(key=key, value=value))
         db.commit()

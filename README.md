@@ -69,6 +69,9 @@ paperfree-ai/
 
 - [x] Upload de documents (PDF, images)
 - [x] OCR local (Tesseract, francais + anglais)
+- [x] **Score de confiance OCR** — Tesseract retourne un score par mot (0–100 %)
+- [x] **Correction OCR par LLM** — le texte brut est envoyé au LLM pour corriger l/1/I, 0/O, mots coupés… Le score de confiance sert de signal d'incertitude
+- [x] **Analyse par vision (LLM multimodal)** — bypass OCR, envoie l'image directement au LLM. Compatible LM Studio (llava, minicpm-v…), OpenAI (gpt-4o) ou Anthropic (claude-3-5-sonnet). Configurable par provider dans les Paramètres
 - [x] Classification automatique par LLM (Facture, Impôts, Santé…)
 - [x] Extraction structurée (date, montant, émetteur)
 - [x] Recherche plein texte
@@ -80,3 +83,30 @@ paperfree-ai/
 - [ ] Application mobile compagnon
 - [ ] Authentification JWT
 - [ ] Pagination
+
+## 🔍 Pipeline OCR & Vision
+
+```
+Image uploadée
+     │
+     ├─── Vision activée ? ──YES──→ Image en base64 → LLM multimodal → JSON structuré
+     │                                                                        │
+     │                                                                  Texte extrait (stored)
+     │
+     └─── Vision désactivée ──→ Tesseract OCR
+                                     │
+                               Score confiance (0–100%)
+                                     │
+                               Correction LLM si < seuil
+                               (ou systématique si activée)
+                                     │
+                               Texte corrigé → LLM → JSON structuré
+```
+
+| Mode | Avantages | Inconvénients |
+|------|-----------|---------------|
+| OCR seul | Rapide, 100% local | Erreurs sur docs complexes |
+| OCR + correction LLM | Meilleure qualité, 100% local | Requête LLM supplémentaire |
+| Vision locale (llava…) | Excellent sur manuscrits/tampons, local | Modèle vision requis, plus lent |
+| Vision OpenAI/Anthropic | Qualité maximale | Données envoyées dans le cloud |
+

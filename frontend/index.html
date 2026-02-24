@@ -198,6 +198,7 @@
 
             <!-- ── LLM ── -->
             <h2 class='text-lg font-semibold mb-4'>⚙️ Paramètres LLM</h2>
+
             <div class='space-y-3'>
                 <div>
                     <label class='block text-sm font-medium text-gray-700 mb-1'>URL de base de l'API</label>
@@ -215,6 +216,94 @@
                 <button onclick='saveSettings()' class='bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 text-sm'>Enregistrer</button>
                 <p id='settingsSaved' class='text-green-600 text-sm hidden'>✓ Paramètres enregistrés</p>
             </div>
+
+            <!-- ── OCR & VISION ── -->
+            <div class='mt-8 pt-6 border-t'>
+                <h2 class='text-lg font-semibold mb-1'>🔍 OCR & Analyse par vision</h2>
+                <p class='text-xs text-gray-500 mb-4'>Amélioration de la qualité OCR grâce au LLM, et option d'analyse directe par vision multimodale.</p>
+
+                <!-- Correction OCR -->
+                <div class='bg-gray-50 rounded-xl border p-4 mb-4'>
+                    <div class='flex items-center justify-between mb-2'>
+                        <div>
+                            <p class='text-sm font-semibold text-gray-700'>🧹 Correction OCR par LLM</p>
+                            <p class='text-xs text-gray-400 mt-0.5'>Le texte extrait par Tesseract est envoyé au LLM pour corriger les erreurs typiques (l/1, 0/O, mots coupés…)</p>
+                        </div>
+                        <label class='relative inline-flex items-center cursor-pointer ml-4'>
+                            <input type='checkbox' id='settingOcrCorrection' class='sr-only peer'>
+                            <div class='w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-blue-500 after:content-[""] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5'></div>
+                        </label>
+                    </div>
+                    <div>
+                        <label class='block text-xs font-medium text-gray-600 mb-1'>Seuil de confiance OCR <span class='text-gray-400'>(0–100 %)</span></label>
+                        <div class='flex items-center gap-3'>
+                            <input type='range' id='settingOcrThreshold' min='0' max='100' value='80'
+                                oninput='document.getElementById("ocrThresholdVal").textContent=this.value+"%"'
+                                class='flex-1'>
+                            <span id='ocrThresholdVal' class='text-sm font-mono text-gray-700 w-10 text-right'>80%</span>
+                        </div>
+                        <p class='text-xs text-gray-400 mt-1'>En dessous de ce seuil, la correction LLM est automatiquement appliquée. Au-dessus, une légère passe de nettoyage est faite si la correction est activée.</p>
+                    </div>
+                </div>
+
+                <!-- Vision -->
+                <div class='bg-purple-50 rounded-xl border border-purple-200 p-4'>
+                    <div class='flex items-center justify-between mb-3'>
+                        <div>
+                            <p class='text-sm font-semibold text-purple-800'>👁 Analyse par vision (LLM multimodal)</p>
+                            <p class='text-xs text-purple-600 mt-0.5'>Envoie l'image directement au LLM (bypass OCR). Meilleure précision sur les documents complexes, tampons, manuscrits.</p>
+                        </div>
+                        <label class='relative inline-flex items-center cursor-pointer ml-4'>
+                            <input type='checkbox' id='settingVisionEnabled' onchange='toggleVisionPanel()' class='sr-only peer'>
+                            <div class='w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-purple-500 after:content-[""] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5'></div>
+                        </label>
+                    </div>
+
+                    <div id='visionPanel' class='hidden space-y-3 pt-3 border-t border-purple-200'>
+                        <div>
+                            <label class='block text-xs font-medium text-gray-700 mb-1'>Provider vision</label>
+                            <select id='settingVisionProvider' onchange='toggleVisionProvider()' class='w-full p-2 border rounded text-sm bg-white'>
+                                <option value='local'>🖥 Local (LM Studio / Ollama — modèle vision requis)</option>
+                                <option value='openai'>☁️ OpenAI (gpt-4o, gpt-4-turbo)</option>
+                                <option value='anthropic'>🤖 Anthropic (claude-3-5-sonnet)</option>
+                            </select>
+                        </div>
+
+                        <div id='visionLocalNote' class='bg-white border rounded p-3 text-xs text-gray-600'>
+                            ℹ️ En mode local, le modèle principal doit supporter la vision (ex: <code class='font-mono bg-gray-100 px-1 rounded'>llava-v1.6</code>, <code class='font-mono bg-gray-100 px-1 rounded'>minicpm-v</code>, <code class='font-mono bg-gray-100 px-1 rounded'>moondream2</code>).
+                            L'URL et la clé du LLM principal seront utilisées sauf si vous les surchargez ci-dessous.
+                        </div>
+
+                        <div id='visionExternalNote' class='hidden bg-amber-50 border border-amber-200 rounded p-3 text-xs text-amber-700'>
+                            ⚠️ Mode externe : des données (images de vos documents) seront envoyées à un service cloud. Assurez-vous que c'est compatible avec vos obligations de confidentialité.
+                        </div>
+
+                        <div class='grid grid-cols-2 gap-3'>
+                            <div>
+                                <label class='block text-xs font-medium text-gray-700 mb-1'>Modèle vision <span class='text-gray-400'>(optionnel)</span></label>
+                                <input type='text' id='settingVisionModel' placeholder='ex: gpt-4o / llava-v1.6 / claude-3-5-sonnet-20241022'
+                                    class='w-full p-2 border rounded text-sm'>
+                            </div>
+                            <div id='visionApiKeyField'>
+                                <label class='block text-xs font-medium text-gray-700 mb-1'>Clé API vision <span class='text-gray-400'>(si externe)</span></label>
+                                <input type='password' id='settingVisionApiKey' placeholder='sk-...'
+                                    class='w-full p-2 border rounded text-sm'>
+                            </div>
+                        </div>
+                        <div id='visionBaseUrlField'>
+                            <label class='block text-xs font-medium text-gray-700 mb-1'>URL base vision <span class='text-gray-400'>(local différent du LLM principal)</span></label>
+                            <input type='text' id='settingVisionBaseUrl' placeholder='http://localhost:1234/v1'
+                                class='w-full p-2 border rounded text-sm'>
+                        </div>
+                    </div>
+                </div>
+
+                <div class='mt-4 flex gap-3'>
+                    <button onclick='saveOcrVisionSettings()' class='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm'>Enregistrer OCR/Vision</button>
+                    <p id='ocrVisionSaved' class='text-green-600 text-sm hidden self-center'>✓ Sauvegardé</p>
+                </div>
+            </div>
+
 
             <!-- ── GUIDE CONNEXION EMAIL ── -->
             <div class='mt-8 pt-6 border-t'>
@@ -721,6 +810,18 @@ async function loadSettings() {
     document.getElementById('settingLlmUrl').value   = s.llm_base_url || '';
     document.getElementById('settingLlmModel').value = s.llm_model    || '';
     document.getElementById('settingLlmKey').value   = s.llm_api_key  || '';
+    // OCR / Vision
+    document.getElementById('settingOcrCorrection').checked = (s.ocr_llm_correction !== 'false');
+    const thr = parseInt(s.ocr_correction_threshold || '80');
+    document.getElementById('settingOcrThreshold').value = thr;
+    document.getElementById('ocrThresholdVal').textContent = thr + '%';
+    document.getElementById('settingVisionEnabled').checked = (s.llm_vision_enabled === 'true');
+    document.getElementById('settingVisionProvider').value  = s.llm_vision_provider || 'local';
+    document.getElementById('settingVisionModel').value     = s.llm_vision_model    || '';
+    document.getElementById('settingVisionApiKey').value    = s.llm_vision_api_key  || '';
+    document.getElementById('settingVisionBaseUrl').value   = s.llm_vision_base_url || '';
+    toggleVisionPanel();
+    toggleVisionProvider();
     // Email
     document.getElementById('settingEmailHost').value           = s.email_host                 || '';
     document.getElementById('settingEmailUser').value           = s.email_user                 || '';
@@ -739,6 +840,38 @@ async function loadSettings() {
     document.getElementById('settingGoogleClientSecret').value = s.google_client_secret || '';
     document.getElementById('settingGoogleRedirectUri').value  = s.google_redirect_uri  || 'http://localhost:8000/email/oauth/google/callback';
     refreshOauthStatus();
+}
+
+async function saveOcrVisionSettings() {
+    const pairs = [
+        ['ocr_llm_correction',       document.getElementById('settingOcrCorrection').checked ? 'true' : 'false'],
+        ['ocr_correction_threshold', document.getElementById('settingOcrThreshold').value],
+        ['llm_vision_enabled',       document.getElementById('settingVisionEnabled').checked ? 'true' : 'false'],
+        ['llm_vision_provider',      document.getElementById('settingVisionProvider').value],
+        ['llm_vision_model',         document.getElementById('settingVisionModel').value],
+        ['llm_vision_api_key',       document.getElementById('settingVisionApiKey').value],
+        ['llm_vision_base_url',      document.getElementById('settingVisionBaseUrl').value],
+    ];
+    for (const [k, v] of pairs) {
+        await fetch(`${API_URL}/settings?key=${k}&value=${encodeURIComponent(v)}`,
+            { method: 'POST', headers: { 'Authorization': authHeader } });
+    }
+    const el = document.getElementById('ocrVisionSaved');
+    el.classList.remove('hidden');
+    setTimeout(() => el.classList.add('hidden'), 2500);
+}
+
+function toggleVisionPanel() {
+    const enabled = document.getElementById('settingVisionEnabled').checked;
+    document.getElementById('visionPanel').classList.toggle('hidden', !enabled);
+}
+
+function toggleVisionProvider() {
+    const provider = document.getElementById('settingVisionProvider').value;
+    const isLocal  = provider === 'local';
+    document.getElementById('visionLocalNote').classList.toggle('hidden', !isLocal);
+    document.getElementById('visionExternalNote').classList.toggle('hidden', isLocal);
+    document.getElementById('visionBaseUrlField').classList.toggle('hidden', !isLocal);
 }
 
 async function saveSettings() {

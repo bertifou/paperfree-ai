@@ -2,10 +2,8 @@ import os
 import json
 import base64
 import logging
-import math
-
 import pytesseract
-from PIL import Image, ImageEnhance, ImageFilter
+from PIL import Image
 import PyPDF2
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -13,9 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Config LLM
-# ---------------------------------------------------------------------------
+# Valeurs par défaut lues depuis .env, avec fallback sur la DB si besoin
 DEFAULT_LLM_CONFIG = {
     "base_url": os.getenv("LLM_BASE_URL", "http://localhost:1234/v1"),
     "api_key":  os.getenv("LLM_API_KEY",  "lm-studio"),
@@ -33,20 +29,31 @@ Analyse le texte fourni et réponds UNIQUEMENT avec un objet JSON valide contena
 }
 Ne réponds rien d'autre que le JSON."""
 
-VISION_PROMPT = """Tu es un assistant spécialisé dans l'analyse de documents administratifs photographiés.
-Lis attentivement ce document et réponds UNIQUEMENT avec un objet JSON valide contenant :
+OCR_CORRECTION_PROMPT = """Tu es un expert en correction de texte OCR pour des documents administratifs français.
+Le texte suivant a été extrait par OCR (reconnaissance optique de caractères) et peut contenir des erreurs typiques :
+- Lettres confondues (l/1/I, 0/O, rn/m, etc.)
+- Espaces manquants ou en trop
+- Ponctuation incorrecte
+- Mots coupés
+
+Corrige ces erreurs en te basant sur le contexte (document administratif français).
+Retourne UNIQUEMENT le texte corrigé, sans commentaires ni explications.
+Conserve la structure et la mise en page originale autant que possible.
+Score de confiance OCR fourni : {confidence}% — plus il est bas, plus la correction est importante."""
+
+VISION_SYSTEM_PROMPT = """Tu es un assistant spécialisé dans l'analyse de documents administratifs par vision.
+On te fournit l'image d'un document. Analyse-la et réponds UNIQUEMENT avec un objet JSON valide contenant :
 {
   "category": "une catégorie parmi : Facture, Impôts, Santé, Banque, Contrat, Assurance, Travail, Courrier, Autre",
   "summary": "résumé en 15 mots maximum",
   "date": "date principale du document au format YYYY-MM-DD ou null",
   "amount": "montant principal en chiffres avec devise ou null",
   "issuer": "organisme ou entreprise émettrice ou null",
-  "ocr_text": "le texte complet que tu lis dans l'image, fidèlement retranscrit"
+  "extracted_text": "texte principal extrait du document (500 mots max)"
 }
 Ne réponds rien d'autre que le JSON."""
 
-
-def get_llm_config():
+def get_llm_config() -> dict:
     """Lit la config LLM depuis la DB, avec fallback sur les variables d'env."""
     try:
         from database import SessionLocal, Setting
@@ -54,426 +61,200 @@ def get_llm_config():
         settings = {s.key: s.value for s in db.query(Setting).all()}
         db.close()
         return {
-            "base_url": settings.get("llm_base_url") or DEFAULT_LLM_CONFIG["base_url"],
-            "api_key":  settings.get("llm_api_key")  or DEFAULT_LLM_CONFIG["api_key"],
-            "model":    settings.get("llm_model")    or DEFAULT_LLM_CONFIG["model"],
+            "base_url":        settings.get("llm_base_url")        or DEFAULT_LLM_CONFIG["base_url"],
+            "api_key":         settings.get("llm_api_key")         or DEFAULT_LLM_CONFIG["api_key"],
+            "model":           settings.get("llm_model")           or DEFAULT_LLM_CONFIG["model"],
+            # Vision
+            "vision_enabled":  settings.get("llm_vision_enabled",  "false").lower() == "true",
+            "vision_provider": settings.get("llm_vision_provider", "local"),   # local | openai | anthropic
+            "vision_model":    settings.get("llm_vision_model",    ""),        # vide = utiliser model principal
+            "vision_api_key":  settings.get("llm_vision_api_key",  ""),
+            "vision_base_url": settings.get("llm_vision_base_url", ""),
+            # OCR
+            "ocr_llm_correction": settings.get("ocr_llm_correction", "true").lower() == "true",
+            "ocr_correction_threshold": int(settings.get("ocr_correction_threshold", "80")),
         }
     except Exception:
-        return DEFAULT_LLM_CONFIG
+        return {**DEFAULT_LLM_CONFIG,
+                "vision_enabled": False, "vision_provider": "local",
+                "vision_model": "", "vision_api_key": "", "vision_base_url": "",
+                "ocr_llm_correction": True, "ocr_correction_threshold": 80}
 
 
 # ---------------------------------------------------------------------------
-# Prétraitement image — Pipeline OpenCV
+# OCR avec score de confiance
 # ---------------------------------------------------------------------------
 
-def _try_import_cv2():
-    """Importe OpenCV si disponible."""
-    try:
-        import cv2
-        import numpy as np
-        return cv2, np
-    except ImportError:
-        logger.warning("[processor] OpenCV non disponible — prétraitement de base uniquement")
-        return None, None
-
-
-def _correct_perspective(img_cv2, cv2, np):
+def extract_text_with_confidence(file_path: str) -> tuple[str, float]:
     """
-    Détecte les bords du document et corrige la perspective.
-    Retourne l'image corrigée, ou l'originale si la détection échoue.
+    Extrait le texte d'une image avec le score de confiance moyen Tesseract.
+    Retourne (texte, confidence_0_to_100).
+    Pour les PDF, retourne (texte, 100.0) car extraction native = fiable.
     """
+    if file_path.lower().endswith(".pdf"):
+        text = _extract_pdf_text(file_path)
+        return text, 100.0
+
     try:
-        gray = cv2.cvtColor(img_cv2, cv2.COLOR_BGR2GRAY)
-        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        edges = cv2.Canny(blurred, 50, 150)
-
-        # Dilatation pour connecter les bords
-        kernel = np.ones((5, 5), np.uint8)
-        dilated = cv2.dilate(edges, kernel, iterations=2)
-
-        contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if not contours:
-            return img_cv2
-
-        # Trouver le plus grand contour quadrilatère
-        contours = sorted(contours, key=cv2.contourArea, reverse=True)
-        doc_contour = None
-
-        for cnt in contours[:5]:
-            peri = cv2.arcLength(cnt, True)
-            approx = cv2.approxPolyDP(cnt, 0.02 * peri, True)
-            if len(approx) == 4:
-                area = cv2.contourArea(approx)
-                img_area = img_cv2.shape[0] * img_cv2.shape[1]
-                # Le document doit couvrir au moins 20% de l'image
-                if area > 0.20 * img_area:
-                    doc_contour = approx
-                    break
-
-        if doc_contour is None:
-            return img_cv2
-
-        # Ordonner les points : haut-gauche, haut-droit, bas-droit, bas-gauche
-        pts = doc_contour.reshape(4, 2).astype(np.float32)
-        s = pts.sum(axis=1)
-        diff = np.diff(pts, axis=1)
-        ordered = np.array([
-            pts[np.argmin(s)],    # haut-gauche
-            pts[np.argmin(diff)], # haut-droit
-            pts[np.argmax(s)],    # bas-droit
-            pts[np.argmax(diff)], # bas-gauche
-        ], dtype=np.float32)
-
-        # Calcul des dimensions cibles
-        wA = np.linalg.norm(ordered[2] - ordered[3])
-        wB = np.linalg.norm(ordered[1] - ordered[0])
-        hA = np.linalg.norm(ordered[1] - ordered[2])
-        hB = np.linalg.norm(ordered[0] - ordered[3])
-        W = int(max(wA, wB))
-        H = int(max(hA, hB))
-
-        if W < 100 or H < 100:
-            return img_cv2
-
-        dst = np.array([[0, 0], [W - 1, 0], [W - 1, H - 1], [0, H - 1]], dtype=np.float32)
-        M = cv2.getPerspectiveTransform(ordered, dst)
-        warped = cv2.warpPerspective(img_cv2, M, (W, H))
-        logger.info(f"[processor] Correction perspective appliquée → {W}x{H}")
-        return warped
-
+        img = Image.open(file_path)
+        # Données détaillées incluant les scores par mot
+        data = pytesseract.image_to_data(img, lang="fra+eng", output_type=pytesseract.Output.DICT)
+        confidences = [int(c) for c in data["conf"] if int(c) >= 0]
+        avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
+        # Texte brut standard
+        text = pytesseract.image_to_string(img, lang="fra+eng").strip()
+        logger.info(f"[ocr] Confiance moyenne : {avg_conf:.1f}% ({len(confidences)} mots)")
+        return text, avg_conf
     except Exception as e:
-        logger.warning(f"[processor] Correction perspective échouée : {e}")
-        return img_cv2
+        logger.error(f"[ocr] Erreur Tesseract : {e}")
+        return "", 0.0
+
+def _extract_pdf_text(file_path: str) -> str:
+    """Extraction texte native depuis un PDF."""
+    text = ""
+    with open(file_path, "rb") as f:
+        reader = PyPDF2.PdfReader(f)
+        for page in reader.pages:
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n"
+    return text.strip()
 
 
-def _auto_rotate(img_cv2, cv2, np):
+# ---------------------------------------------------------------------------
+# Correction OCR par LLM (texte uniquement)
+# ---------------------------------------------------------------------------
+
+def correct_ocr_with_llm(text: str, confidence: float, config: dict) -> str:
     """
-    Détecte et corrige la rotation du document (texte incliné).
-    Utilise les lignes de texte pour détecter l'angle.
+    Soumet le texte OCR brut au LLM pour correction des erreurs typiques.
+    Utilisé quand la confiance est sous le seuil OU systématiquement selon config.
     """
+    if not text.strip():
+        return text
+
+    threshold = config.get("ocr_correction_threshold", 80)
+    if not config.get("ocr_llm_correction", True):
+        return text  # Correction désactivée dans les settings
+
+    # Toujours corriger si confiance < seuil, sinon légère passe de nettoyage
+    prompt = OCR_CORRECTION_PROMPT.format(confidence=f"{confidence:.0f}")
+    logger.info(f"[ocr-correction] Confiance {confidence:.0f}% → correction LLM activée")
+
     try:
-        gray = cv2.cvtColor(img_cv2, cv2.COLOR_BGR2GRAY)
-        # Utiliser Tesseract OSD pour détecter la rotation
-        pil_img = Image.fromarray(cv2.cvtColor(img_cv2, cv2.COLOR_BGR2RGB))
-        osd = pytesseract.image_to_osd(pil_img, config="--psm 0 -c min_characters_to_try=5",
-                                       output_type=pytesseract.Output.DICT)
-        angle = osd.get("rotate", 0)
-        if angle and angle != 0:
-            logger.info(f"[processor] Rotation détectée : {angle}°")
-            h, w = img_cv2.shape[:2]
-            M = cv2.getRotationMatrix2D((w / 2, h / 2), -angle, 1.0)
-            rotated = cv2.warpAffine(img_cv2, M, (w, h),
-                                     flags=cv2.INTER_CUBIC,
-                                     borderMode=cv2.BORDER_REPLICATE)
-            return rotated
-    except Exception:
-        pass
-    return img_cv2
-
-
-def preprocess_image_for_ocr(file_path: str) -> Image.Image:
-    """
-    Pipeline de prétraitement complet pour optimiser l'OCR sur photos de documents.
-    Retourne une image PIL prête pour Tesseract.
-    """
-    cv2, np = _try_import_cv2()
-
-    # --- Pillow seul si OpenCV absent ---
-    if cv2 is None:
-        return _preprocess_pillow_only(file_path)
-
-    # === Pipeline OpenCV ===
-    img = cv2.imread(file_path)
-    if img is None:
-        # Fallback via Pillow (HEIC, formats exotiques)
-        pil = Image.open(file_path).convert("RGB")
-        img = cv2.cvtColor(np.array(pil), cv2.COLOR_RGB2BGR)
-
-    logger.info(f"[processor] Image originale : {img.shape[1]}x{img.shape[0]}")
-
-    # 1. Upscaling si trop petite (Tesseract aime les images à ~300 DPI)
-    h, w = img.shape[:2]
-    min_dim = 1800  # pixels
-    if max(w, h) < min_dim:
-        scale = min_dim / max(w, h)
-        img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_CUBIC)
-        logger.info(f"[processor] Upscaling ×{scale:.1f} → {img.shape[1]}x{img.shape[0]}")
-
-    # 2. Correction de perspective (redressement du document)
-    img = _correct_perspective(img, cv2, np)
-
-    # 3. Auto-rotation
-    img = _auto_rotate(img, cv2, np)
-
-    # 4. Conversion en niveaux de gris
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    # 5. Correction d'éclairage non uniforme (ombres, reflets)
-    #    Utilise un flou gaussien large comme fond de référence
-    bg = cv2.GaussianBlur(gray, (0, 0), sigmaX=50)
-    normalized = cv2.divide(gray, bg, scale=255)
-
-    # 6. Débruitage
-    denoised = cv2.fastNlMeansDenoising(normalized, h=10, templateWindowSize=7, searchWindowSize=21)
-
-    # 7. Binarisation adaptative (meilleure que le seuillage global pour les photos)
-    binary = cv2.adaptiveThreshold(
-        denoised, 255,
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY,
-        blockSize=21,
-        C=10,
-    )
-
-    # 8. Légère dilatation pour reconnecter les lettres fragmentées
-    kernel = np.ones((1, 1), np.uint8)
-    binary = cv2.dilate(binary, kernel, iterations=1)
-
-    # Convertir en PIL pour Tesseract
-    result = Image.fromarray(binary)
-    logger.info(f"[processor] Prétraitement terminé → {result.size[0]}x{result.size[1]} (L)")
-    return result
-
-
-def _preprocess_pillow_only(file_path: str) -> Image.Image:
-    """Prétraitement léger sans OpenCV."""
-    img = Image.open(file_path).convert("RGB")
-
-    # Upscaling
-    w, h = img.size
-    if max(w, h) < 1800:
-        scale = 1800 / max(w, h)
-        img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
-
-    # Netteté
-    img = img.filter(ImageFilter.SHARPEN)
-    img = img.filter(ImageFilter.SHARPEN)
-
-    # Contraste
-    img = ImageEnhance.Contrast(img).enhance(1.8)
-    img = ImageEnhance.Sharpness(img).enhance(2.0)
-
-    # Niveaux de gris
-    gray = img.convert("L")
-    return gray
-
-
-# ---------------------------------------------------------------------------
-# OCR Tesseract
-# ---------------------------------------------------------------------------
-
-TESSERACT_CONFIG = (
-    "--oem 3 "        # LSTM engine (le plus précis)
-    "--psm 1 "        # Segmentation auto avec OSD
-    "-l fra+eng "     # Français + Anglais
-    "--dpi 300 "      # Indiquer la résolution
-    "-c preserve_interword_spaces=1 "
-    "-c tessedit_char_whitelist="
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-    "ÀÂÄÈÉÊËÎÏÔÙÛÜÇàâäèéêëîïôùûüç"
-    "0123456789 .,;:!?@#€$%&*()-_=+[]{}|/<>\"'\\n\\t"
-)
-
-def _ocr_image(pil_img: Image.Image) -> str:
-    """Lance Tesseract avec config optimisée."""
-    try:
-        text = pytesseract.image_to_string(pil_img, config=TESSERACT_CONFIG)
-        return text.strip()
-    except Exception:
-        # Fallback config minimale
-        try:
-            return pytesseract.image_to_string(
-                pil_img, lang="fra+eng", config="--oem 3 --psm 6"
-            ).strip()
-        except Exception as e:
-            logger.error(f"[processor] OCR échoué : {e}")
-            return ""
-
-
-def _ocr_quality_score(text: str) -> float:
-    """
-    Retourne un score 0-1 de qualité du texte OCR.
-    Un score bas indique que le résultat est probablement mauvais.
-    """
-    if not text or len(text.strip()) < 10:
-        return 0.0
-
-    words = text.split()
-    if len(words) < 3:
-        return 0.1
-
-    # Ratio de caractères valides vs bruit
-    valid_chars = sum(1 for c in text if c.isalnum() or c in " .,;:!?\n€$%-")
-    noise_ratio = 1 - (valid_chars / max(len(text), 1))
-
-    # Trop de lignes avec < 2 caractères = bruit
-    lines = [l.strip() for l in text.split("\n") if l.strip()]
-    short_lines = sum(1 for l in lines if len(l) < 3)
-    short_ratio = short_lines / max(len(lines), 1)
-
-    score = 1.0 - (noise_ratio * 0.6) - (short_ratio * 0.4)
-    return max(0.0, min(1.0, score))
-
-
-# ---------------------------------------------------------------------------
-# Fallback Vision LLM
-# ---------------------------------------------------------------------------
-
-def _analyze_with_vision_llm(file_path: str, config: dict) -> tuple[str, dict] | None:
-    """
-    Envoie l'image au LLM avec capacités Vision (GPT-4V, LLaVA, etc.)
-    Retourne (texte_ocr, analyse_dict) ou None si le LLM ne supporte pas la vision.
-    """
-    try:
-        with open(file_path, "rb") as f:
-            img_b64 = base64.b64encode(f.read()).decode("utf-8")
-
-        # Détecter le type MIME
-        ext = os.path.splitext(file_path)[1].lower()
-        mime_map = {".jpg": "image/jpeg", ".jpeg": "image/jpeg",
-                    ".png": "image/png", ".bmp": "image/bmp",
-                    ".tiff": "image/tiff", ".webp": "image/webp"}
-        mime = mime_map.get(ext, "image/jpeg")
-
         client = OpenAI(base_url=config["base_url"], api_key=config["api_key"])
         response = client.chat.completions.create(
             model=config["model"],
             messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": f"data:{mime};base64,{img_b64}"},
-                        },
-                        {"type": "text", "text": VISION_PROMPT},
-                    ],
-                }
+                {"role": "system", "content": prompt},
+                {"role": "user",   "content": text[:4000]},
             ],
             temperature=0.1,
-            max_tokens=2000,
+        )
+        corrected = response.choices[0].message.content.strip()
+        logger.info(f"[ocr-correction] Texte corrigé ({len(corrected)} chars)")
+        return corrected
+    except Exception as e:
+        logger.warning(f"[ocr-correction] Erreur LLM, texte brut conservé : {e}")
+        return text
+
+
+# ---------------------------------------------------------------------------
+# Analyse par vision (image → LLM multimodal)
+# ---------------------------------------------------------------------------
+
+def _get_vision_client(config: dict) -> tuple:
+    """Retourne (client, model) selon le provider vision configuré."""
+    provider = config.get("vision_provider", "local")
+    v_model  = config.get("vision_model") or config.get("model", "")
+    v_key    = config.get("vision_api_key") or config.get("api_key", "")
+    v_url    = config.get("vision_base_url") or config.get("base_url", "")
+
+    if provider == "openai":
+        client = OpenAI(api_key=v_key or os.getenv("OPENAI_API_KEY", ""))
+        model  = v_model or "gpt-4o"
+    elif provider == "anthropic":
+        # Utilise l'API Anthropic via interface compatible OpenAI (claude-3-5-sonnet)
+        client = OpenAI(
+            base_url="https://api.anthropic.com/v1",
+            api_key=v_key or os.getenv("ANTHROPIC_API_KEY", ""),
+        )
+        model = v_model or "claude-3-5-sonnet-20241022"
+    else:
+        # Local (LM Studio / Ollama avec modèle vision — ex: llava, minicpm-v)
+        client = OpenAI(base_url=v_url, api_key=v_key)
+        model  = v_model or config.get("model", "local-model")
+
+    return client, model
+
+def _image_to_base64(file_path: str) -> tuple[str, str]:
+    """Encode une image en base64 et retourne (data_url_prefix, b64_string)."""
+    ext = os.path.splitext(file_path)[1].lower()
+    mime_map = {".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+                ".png": "image/png", ".bmp": "image/bmp",
+                ".tiff": "image/tiff", ".webp": "image/webp"}
+    mime = mime_map.get(ext, "image/jpeg")
+    with open(file_path, "rb") as f:
+        b64 = base64.b64encode(f.read()).decode("utf-8")
+    return mime, b64
+
+
+def analyze_with_vision(file_path: str, config: dict) -> dict:
+    """
+    Analyse un document image via un LLM multimodal (vision).
+    Retourne le dict structuré incluant extracted_text.
+    """
+    logger.info(f"[vision] Analyse vision de : {file_path}")
+    try:
+        mime, b64 = _image_to_base64(file_path)
+        client, model = _get_vision_client(config)
+
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "image_url",
+                     "image_url": {"url": f"data:{mime};base64,{b64}", "detail": "high"}},
+                    {"type": "text", "text": VISION_SYSTEM_PROMPT},
+                ],
+            }],
+            temperature=0.1,
+            max_tokens=1500,
         )
         raw = response.choices[0].message.content.strip()
         if raw.startswith("```"):
             raw = raw.split("```")[1]
             if raw.startswith("json"):
                 raw = raw[4:]
-        result = json.loads(raw.strip())
-        ocr_text = result.pop("ocr_text", "")
-        logger.info("[processor] Vision LLM utilisé avec succès")
-        return ocr_text, result
-
+        result = json.loads(raw)
+        logger.info(f"[vision] Résultat : {result.get('category')} — {result.get('summary')}")
+        return result
+    except json.JSONDecodeError:
+        logger.warning("[vision] JSON invalide, fallback analyse texte")
+        return {"category": "Autre", "summary": "Analyse vision impossible (JSON invalide)",
+                "date": None, "amount": None, "issuer": None, "extracted_text": ""}
     except Exception as e:
-        logger.info(f"[processor] Vision LLM non disponible : {e}")
-        return None
+        logger.error(f"[vision] Erreur : {e}")
+        return {"category": "Erreur", "summary": str(e)[:100],
+                "date": None, "amount": None, "issuer": None, "extracted_text": ""}
 
 
 # ---------------------------------------------------------------------------
-# Extraction texte
+# Analyse texte standard par LLM
 # ---------------------------------------------------------------------------
 
-def extract_text(file_path: str) -> str:
-    """Extrait le texte brut d'un PDF ou d'une image avec prétraitement."""
-    if file_path.lower().endswith(".pdf"):
-        return _extract_pdf_text(file_path)
-    return _extract_image_text(file_path)
-
-
-def _extract_pdf_text(file_path: str) -> str:
-    """Extrait le texte d'un PDF natif, avec fallback OCR si le PDF est scanné."""
-    text = ""
-    try:
-        with open(file_path, "rb") as f:
-            reader = PyPDF2.PdfReader(f)
-            for page in reader.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    text += page_text + "\n"
-    except Exception as e:
-        logger.error(f"[processor] Erreur lecture PDF : {e}")
-
-    # Si le PDF est vide (PDF scanné), faire OCR page par page
-    if len(text.strip()) < 50:
-        logger.info("[processor] PDF semble scanné — tentative OCR")
-        try:
-            import fitz  # PyMuPDF (optionnel)
-            doc = fitz.open(file_path)
-            for page in doc:
-                mat = fitz.Matrix(2.0, 2.0)  # ×2 résolution
-                pix = page.get_pixmap(matrix=mat)
-                pil = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-                text += _ocr_image(pil) + "\n"
-        except ImportError:
-            logger.info("[processor] PyMuPDF absent — PDF scanné non traité")
-        except Exception as e:
-            logger.error(f"[processor] OCR PDF scanné échoué : {e}")
-
-    return text.strip()
-
-
-def _extract_image_text(file_path: str) -> str:
-    """Pipeline complet d'extraction depuis une image photo."""
-    # 1. Prétraitement
-    processed = preprocess_image_for_ocr(file_path)
-
-    # 2. OCR Tesseract
-    text = _ocr_image(processed)
-    score = _ocr_quality_score(text)
-    logger.info(f"[processor] OCR qualité : {score:.2f} | {len(text)} chars")
-
-    # 3. Si qualité insuffisante, essayer d'autres configs PSM
-    if score < 0.5:
-        logger.info("[processor] Qualité OCR faible — tentative PSM alternatifs")
-        best_text = text
-        best_score = score
-
-        for psm in [3, 4, 6, 11]:
-            try:
-                alt_text = pytesseract.image_to_string(
-                    processed, lang="fra+eng",
-                    config=f"--oem 3 --psm {psm} --dpi 300"
-                ).strip()
-                alt_score = _ocr_quality_score(alt_text)
-                if alt_score > best_score:
-                    best_text, best_score = alt_text, alt_score
-                    logger.info(f"[processor] PSM {psm} améliore : score {alt_score:.2f}")
-            except Exception:
-                pass
-
-        text = best_text
-        score = best_score
-
-    logger.info(f"[processor] Texte final OCR : {len(text)} chars | score {score:.2f}")
-    return text
-
-
-# ---------------------------------------------------------------------------
-# Analyse LLM
-# ---------------------------------------------------------------------------
-
-def analyze_with_llm(text: str, file_path: str = None, ocr_score: float = 1.0) -> dict:
-    """
-    Analyse le texte avec le LLM.
-    Si l'OCR est de mauvaise qualité ET que le LLM supporte la vision,
-    utilise directement l'image.
-    """
-    config = get_llm_config()
-
-    # Tenter Vision LLM si OCR de mauvaise qualité et qu'on a le fichier image
-    if file_path and ocr_score < 0.4 and not file_path.lower().endswith(".pdf"):
-        logger.info("[processor] OCR insuffisant → tentative Vision LLM")
-        vision_result = _analyze_with_vision_llm(file_path, config)
-        if vision_result:
-            return vision_result[1]  # retourner uniquement l'analyse
-
-    # Analyse texte standard
+def analyze_with_llm(text: str, config: dict | None = None) -> dict:
+    """Envoie le texte au LLM et retourne un dict structuré."""
+    if config is None:
+        config = get_llm_config()
     try:
         client = OpenAI(base_url=config["base_url"], api_key=config["api_key"])
         response = client.chat.completions.create(
             model=config["model"],
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": text[:4000]},
+                {"role": "user",   "content": text[:3000]},
             ],
             temperature=0.1,
         )
@@ -482,7 +263,7 @@ def analyze_with_llm(text: str, file_path: str = None, ocr_score: float = 1.0) -
             raw = raw.split("```")[1]
             if raw.startswith("json"):
                 raw = raw[4:]
-        return json.loads(raw.strip())
+        return json.loads(raw)
     except json.JSONDecodeError:
         return {"category": "Autre", "summary": "Analyse impossible (JSON invalide)",
                 "date": None, "amount": None, "issuer": None}
@@ -497,43 +278,43 @@ def analyze_with_llm(text: str, file_path: str = None, ocr_score: float = 1.0) -
 
 def process_document(file_path: str) -> tuple[str, dict]:
     """
-    Retourne (texte_brut, analyse_dict).
-    Pipeline amélioré avec prétraitement image et fallback Vision LLM.
+    Pipeline complet : OCR → correction LLM → analyse structurée.
+    Si vision activée et fichier image → bypass OCR, analyse directe par vision.
+    Retourne (texte_brut_ou_corrigé, analyse_dict).
     """
-    is_image = not file_path.lower().endswith(".pdf")
+    config = get_llm_config()
+    ext = os.path.splitext(file_path)[1].lower()
+    is_image = ext in (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp")
 
+    # ── Chemin vision (image + vision activée) ──────────────────────────────
+    if is_image and config.get("vision_enabled"):
+        logger.info("[processor] Mode VISION activé")
+        vision_result = analyze_with_vision(file_path, config)
+        # Le texte extrait par vision sert de contenu OCR stocké en DB
+        extracted_text = vision_result.pop("extracted_text", "") or ""
+        # Si le texte extrait est substantiel, on l'enrichit avec une passe OCR aussi
+        if not extracted_text:
+            ocr_text, _ = extract_text_with_confidence(file_path)
+            extracted_text = ocr_text
+        return extracted_text, vision_result
+
+    # ── Chemin OCR + correction LLM + analyse ──────────────────────────────
     if is_image:
-        processed = preprocess_image_for_ocr(file_path)
-        text = _ocr_image(processed)
-        score = _ocr_quality_score(text)
-
-        # Essayer PSM alternatifs si qualité faible
-        if score < 0.5:
-            best_text, best_score = text, score
-            for psm in [3, 4, 6, 11]:
-                try:
-                    alt = pytesseract.image_to_string(
-                        processed, lang="fra+eng",
-                        config=f"--oem 3 --psm {psm} --dpi 300"
-                    ).strip()
-                    s = _ocr_quality_score(alt)
-                    if s > best_score:
-                        best_text, best_score = alt, s
-                except Exception:
-                    pass
-            text, score = best_text, best_score
+        ocr_text, confidence = extract_text_with_confidence(file_path)
+        logger.info(f"[processor] OCR confiance={confidence:.1f}%")
+        # Correction LLM si texte non vide
+        if ocr_text.strip():
+            corrected_text = correct_ocr_with_llm(ocr_text, confidence, config)
+        else:
+            corrected_text = ocr_text
     else:
-        text = extract_text(file_path)
-        score = _ocr_quality_score(text) if text else 0.0
+        # PDF — extraction native, pas d'OCR Tesseract nécessaire
+        corrected_text = _extract_pdf_text(file_path)
+        confidence = 100.0
 
-    # Analyse LLM (avec fallback vision si image de mauvaise qualité)
-    analysis = analyze_with_llm(text, file_path=file_path if is_image else None, ocr_score=score)
+    analysis = analyze_with_llm(corrected_text, config)
+    # Stocker le score OCR dans le résumé si confiance basse (debug utile)
+    if confidence < 60 and is_image:
+        analysis["ocr_confidence"] = round(confidence, 1)
 
-    # Si Vision LLM a fourni un texte OCR meilleur, l'utiliser
-    if isinstance(analysis, tuple):
-        text_from_vision, analysis = analysis
-        if text_from_vision and len(text_from_vision) > len(text):
-            text = text_from_vision
-
-    logger.info(f"[processor] Traitement terminé : {analysis.get('category')} | score OCR {score:.2f}")
-    return text, analysis
+    return corrected_text, analysis
