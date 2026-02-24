@@ -374,8 +374,13 @@ def _get_email_creds(db: Session):
     host = settings.get("email_host", "")
     user = settings.get("email_user", "")
     pwd  = settings.get("email_password", "")
-    if not (host and user and pwd):
+    if not host or not user:
         raise HTTPException(status_code=400, detail="Compte email non configuré. Allez dans Paramètres > Email.")
+    # Mot de passe facultatif si OAuth2 est configuré (Google ou Microsoft)
+    if not pwd:
+        import oauth_google, oauth_microsoft
+        if not oauth_google.is_oauth_configured() and not oauth_microsoft.is_oauth_configured():
+            raise HTTPException(status_code=400, detail="Mot de passe manquant et aucun OAuth2 configuré. Allez dans Paramètres > Email.")
     return host, user, pwd, settings
 
 
@@ -386,15 +391,17 @@ def test_email_connection(db: Session = Depends(get_db), current_user: User = De
     host = settings.get("email_host", "")
     user = settings.get("email_user", "")
     pwd  = settings.get("email_password", "")
-    import oauth_microsoft
-    oauth_ok = oauth_microsoft.is_oauth_configured()
+    import oauth_microsoft, oauth_google
+    ms_ok = oauth_microsoft.is_oauth_configured()
+    g_ok  = oauth_google.is_oauth_configured()
+    oauth_ok = ms_ok or g_ok
 
     if not host:
         return {"ok": False, "error": "Serveur IMAP non configuré", "oauth": oauth_ok}
     if not user:
         return {"ok": False, "error": "Adresse email non configurée", "oauth": oauth_ok}
     if not pwd and not oauth_ok:
-        return {"ok": False, "error": "Mot de passe manquant et OAuth2 non configuré", "oauth": oauth_ok}
+        return {"ok": False, "error": "Mot de passe manquant et aucun OAuth2 configuré", "oauth": oauth_ok}
 
     try:
         folders = email_monitor.list_folders(host, user, pwd)
