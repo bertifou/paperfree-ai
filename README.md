@@ -38,13 +38,17 @@ docker-compose up -d
 
 ## ⚙️ Configuration LLM
 
-Modifier `LLM_BASE_URL` dans `.env` :
+Modifier `LLM_BASE_URL` dans `.env`, ou choisir directement depuis l'interface web (onglet Paramètres → boutons de sélection rapide) :
 
-| Backend    | URL                              |
-|------------|----------------------------------|
-| LM Studio  | `http://localhost:1234/v1`       |
-| Ollama     | `http://localhost:11434/v1`      |
-| OpenAI     | `https://api.openai.com/v1`      |
+| Backend        | URL                                                                 | Modèles suggérés                                    |
+|----------------|---------------------------------------------------------------------|-----------------------------------------------------|
+| LM Studio      | `http://localhost:1234/v1`                                          | `local-model`                                       |
+| Ollama         | `http://localhost:11434/v1`                                         | `llama3`, `mistral`, `qwen2.5`                      |
+| OpenAI         | `https://api.openai.com/v1`                                         | `gpt-4o-mini`, `gpt-4o`                             |
+| Google Gemini  | `https://generativelanguage.googleapis.com/v1beta/openai/`         | `gemini-2.5-flash-preview-05-20`, `gemini-2.0-flash`, `gemini-1.5-flash` |
+
+> **Gemini** : Clé API gratuite disponible sur [aistudio.google.com/apikey](https://aistudio.google.com/apikey).  
+> L'API Gemini expose un endpoint compatible OpenAI — aucune librairie supplémentaire requise.
 
 La config peut aussi être modifiée à chaud depuis l'interface web (onglet Paramètres).
 

@@ -804,12 +804,80 @@ async function doSearch(mode) {
 }
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
+
+// Backends LLM connus — chargés depuis l'API au démarrage
+let _backends = [];
+
+async function loadBackends() {
+    try {
+        const res = await fetch(`${API_URL}/backends`);
+        if (!res.ok) return;
+        const data = await res.json();
+        _backends = data.backends || [];
+        const container = document.getElementById('backendButtons');
+        if (!container) return;
+        const ICONS = { lm_studio: '🖥', ollama: '🦙', openai: '🤖', gemini: '✨' };
+        container.innerHTML = _backends.map(b => `
+            <button onclick='applyBackend("${b.id}")'
+                class='backend-btn border-2 border-gray-200 rounded-xl p-2 text-center hover:border-blue-400 hover:bg-blue-50 transition text-xs'>
+                <div class='text-lg'>${ICONS[b.id] || '⚙️'}</div>
+                <div class='font-semibold text-gray-700 mt-0.5'>${b.label}</div>
+            </button>`).join('');
+    } catch(e) {}
+}
+
+function applyBackend(id) {
+    const b = _backends.find(x => x.id === id);
+    if (!b) return;
+    document.getElementById('settingLlmUrl').value   = b.base_url;
+    document.getElementById('settingLlmKey').value   = b.api_key || '';
+    document.getElementById('settingLlmModel').value = b.models[0] || '';
+
+    // Mettre à jour les suggestions de modèles
+    const sel = document.getElementById('modelSuggestions');
+    if (b.models.length > 1) {
+        sel.innerHTML = '<option value="">— suggestions —</option>' +
+            b.models.map(m => `<option value="${m}">${m}</option>`).join('');
+        sel.classList.remove('hidden');
+    } else {
+        sel.classList.add('hidden');
+    }
+
+    // Hint pour la clé API
+    const hint = document.getElementById('settingLlmKeyHint');
+    if (b.hint) {
+        hint.textContent = '💡 ' + b.hint;
+        hint.classList.remove('hidden');
+    } else {
+        hint.classList.add('hidden');
+    }
+
+    // Mise en évidence du bouton actif
+    document.querySelectorAll('.backend-btn').forEach(btn => {
+        btn.classList.remove('border-blue-500', 'bg-blue-50');
+        btn.classList.add('border-gray-200');
+    });
+    const active = document.querySelector(`.backend-btn[onclick='applyBackend("${id}")']`);
+    if (active) {
+        active.classList.remove('border-gray-200');
+        active.classList.add('border-blue-500', 'bg-blue-50');
+    }
+}
+
+function applyModelSuggestion() {
+    const sel = document.getElementById('modelSuggestions');
+    if (sel.value) document.getElementById('settingLlmModel').value = sel.value;
+}
+
 async function loadSettings() {
     const res = await fetch(`${API_URL}/settings`, { headers: { 'Authorization': authHeader } });
     const s = await res.json();
     document.getElementById('settingLlmUrl').value   = s.llm_base_url || '';
     document.getElementById('settingLlmModel').value = s.llm_model    || '';
     document.getElementById('settingLlmKey').value   = s.llm_api_key  || '';
+    // Charger les backends et surligner l'actif
+    await loadBackends();
+    _highlightActiveBackend(s.llm_base_url || '');
     // OCR / Vision
     document.getElementById('settingOcrCorrection').checked = (s.ocr_llm_correction !== 'false');
     const thr = parseInt(s.ocr_correction_threshold || '80');
@@ -840,6 +908,21 @@ async function loadSettings() {
     document.getElementById('settingGoogleClientSecret').value = s.google_client_secret || '';
     document.getElementById('settingGoogleRedirectUri').value  = s.google_redirect_uri  || 'http://localhost:8000/email/oauth/google/callback';
     refreshOauthStatus();
+}
+
+function _highlightActiveBackend(currentUrl) {
+    if (!currentUrl || !_backends.length) return;
+    const match = _backends.find(b => currentUrl.startsWith(b.base_url.split('/v1')[0]));
+    if (!match) return;
+    document.querySelectorAll('.backend-btn').forEach(btn => {
+        btn.classList.remove('border-blue-500', 'bg-blue-50');
+        btn.classList.add('border-gray-200');
+    });
+    const active = document.querySelector(`.backend-btn[onclick='applyBackend("${match.id}")']`);
+    if (active) {
+        active.classList.remove('border-gray-200');
+        active.classList.add('border-blue-500', 'bg-blue-50');
+    }
 }
 
 async function saveOcrVisionSettings() {

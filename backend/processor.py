@@ -18,6 +18,22 @@ DEFAULT_LLM_CONFIG = {
     "model":    os.getenv("LLM_MODEL",    "local-model"),
 }
 
+# Backends connus — URL de base par défaut (utile pour l'UI et la validation)
+KNOWN_BACKENDS = {
+    "lm_studio": "http://localhost:1234/v1",
+    "ollama":    "http://localhost:11434/v1",
+    "openai":    "https://api.openai.com/v1",
+    "gemini":    "https://generativelanguage.googleapis.com/v1beta/openai/",
+}
+
+# Modèles Gemini recommandés (exposés via /backends pour l'UI)
+GEMINI_MODELS = [
+    "gemini-2.5-flash-preview-05-20",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
+]
+
 SYSTEM_PROMPT = """Tu es un assistant spécialisé dans l'analyse de documents administratifs.
 Analyse le texte fourni et réponds UNIQUEMENT avec un objet JSON valide contenant :
 {

@@ -102,6 +102,48 @@ def get_status(db: Session = Depends(get_db)):
     user_exists = db.query(User).first() is not None
     return {"setup_required": not user_exists, "version": "0.3.0"}
 
+
+@app.get("/backends")
+def get_backends():
+    """Retourne la liste des backends LLM connus avec leurs URLs et modèles suggérés."""
+    from processor import KNOWN_BACKENDS, GEMINI_MODELS
+    return {
+        "backends": [
+            {
+                "id":       "lm_studio",
+                "label":    "LM Studio",
+                "base_url": KNOWN_BACKENDS["lm_studio"],
+                "api_key":  "lm-studio",
+                "models":   ["local-model"],
+                "hint":     "Modèle local via LM Studio",
+            },
+            {
+                "id":       "ollama",
+                "label":    "Ollama",
+                "base_url": KNOWN_BACKENDS["ollama"],
+                "api_key":  "ollama",
+                "models":   ["llama3", "mistral", "qwen2.5"],
+                "hint":     "Modèle local via Ollama",
+            },
+            {
+                "id":       "openai",
+                "label":    "OpenAI",
+                "base_url": KNOWN_BACKENDS["openai"],
+                "api_key":  "",
+                "models":   ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo"],
+                "hint":     "Clé API sur platform.openai.com",
+            },
+            {
+                "id":       "gemini",
+                "label":    "Google Gemini",
+                "base_url": KNOWN_BACKENDS["gemini"],
+                "api_key":  "",
+                "models":   GEMINI_MODELS,
+                "hint":     "Clé API sur aistudio.google.com/apikey",
+            },
+        ]
+    }
+
 @app.post("/setup")
 def setup_admin(username: str, password: str, llm_url: str = "", db: Session = Depends(get_db)):
     if db.query(User).first():
