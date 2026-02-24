@@ -27,8 +27,10 @@ KNOWN_BACKENDS = {
 }
 
 # Modèles Gemini recommandés (exposés via /backends pour l'UI)
+# Note : "gemini-3" n'existe pas encore — le dernier preview est gemini-2.5-flash
 GEMINI_MODELS = [
     "gemini-2.5-flash-preview-05-20",
+    "gemini-2.5-pro-preview-05-06",
     "gemini-2.0-flash",
     "gemini-1.5-flash",
     "gemini-1.5-pro",
@@ -56,6 +58,24 @@ Corrige ces erreurs en te basant sur le contexte (document administratif frança
 Retourne UNIQUEMENT le texte corrigé, sans commentaires ni explications.
 Conserve la structure et la mise en page originale autant que possible.
 Score de confiance OCR fourni : {confidence}% — plus il est bas, plus la correction est importante."""
+
+OCR_VISION_CORRECTION_PROMPT = """Tu es un expert en correction de texte OCR pour des documents administratifs français.
+L'image originale du document t'est fournie ainsi que le texte extrait automatiquement par OCR.
+
+Score de confiance OCR : {confidence}% — plus il est bas, plus les erreurs sont probables.
+
+Erreurs OCR typiques à corriger en t'aidant de l'image :
+- Lettres confondues (l/1/I, 0/O, rn/m, cl/d, etc.)
+- Espaces manquants ou en trop
+- Ponctuation incorrecte
+- Mots coupés ou fusionnés
+- Chiffres mal reconnus dans les montants et dates
+
+Texte OCR à corriger :
+{ocr_text}
+
+Retourne UNIQUEMENT le texte corrigé, sans commentaires ni explications.
+Conserve la structure et la mise en page originale."""
 
 VISION_SYSTEM_PROMPT = """Tu es un assistant spécialisé dans l'analyse de documents administratifs par vision.
 On te fournit l'image d'un document. Analyse-la et réponds UNIQUEMENT avec un objet JSON valide contenant :
@@ -175,6 +195,47 @@ def correct_ocr_with_llm(text: str, confidence: float, config: dict) -> str:
         return text
 
 
+def correct_ocr_with_vision(file_path: str, ocr_text: str, confidence: float, config: dict) -> str:
+    """
+    Correction OCR avancée : passe l'image + le texte OCR + le score de confiance
+    au LLM vision pour corriger les erreurs en se basant sur le document original.
+    Utilisé uniquement si vision activée et fichier image disponible.
+    """
+    if not ocr_text.strip():
+        return ocr_text
+    if not config.get("ocr_llm_correction", True):
+        return ocr_text
+
+    logger.info(f"[ocr-vision-correction] Confiance {confidence:.0f}% → correction vision activée")
+    try:
+        mime, b64 = _image_to_base64(file_path)
+        client, model = _get_vision_client(config)
+
+        prompt = OCR_VISION_CORRECTION_PROMPT.format(
+            confidence=f"{confidence:.0f}",
+            ocr_text=ocr_text[:3000],
+        )
+        response = client.chat.completions.create(
+            model=model,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {"type": "image_url",
+                     "image_url": {"url": f"data:{mime};base64,{b64}", "detail": "high"}},
+                    {"type": "text", "text": prompt},
+                ],
+            }],
+            temperature=0.1,
+            max_tokens=2000,
+        )
+        corrected = response.choices[0].message.content.strip()
+        logger.info(f"[ocr-vision-correction] Texte corrigé ({len(corrected)} chars)")
+        return corrected
+    except Exception as e:
+        logger.warning(f"[ocr-vision-correction] Erreur, fallback correction texte : {e}")
+        return correct_ocr_with_llm(ocr_text, confidence, config)
+
+
 # ---------------------------------------------------------------------------
 # Analyse par vision (image → LLM multimodal)
 # ---------------------------------------------------------------------------
@@ -196,6 +257,13 @@ def _get_vision_client(config: dict) -> tuple:
             api_key=v_key or os.getenv("ANTHROPIC_API_KEY", ""),
         )
         model = v_model or "claude-3-5-sonnet-20241022"
+    elif provider == "gemini":
+        # Gemini via son endpoint compatible OpenAI
+        client = OpenAI(
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+            api_key=v_key or os.getenv("GEMINI_API_KEY", ""),
+        )
+        model = v_model or "gemini-2.5-flash-preview-05-20"
     else:
         # Local (LM Studio / Ollama avec modèle vision — ex: llava, minicpm-v)
         client = OpenAI(base_url=v_url, api_key=v_key)
@@ -320,7 +388,11 @@ def process_document(file_path: str) -> tuple[str, dict]:
         logger.info(f"[processor] OCR confiance={confidence:.1f}%")
         # Correction LLM si texte non vide
         if ocr_text.strip():
-            corrected_text = correct_ocr_with_llm(ocr_text, confidence, config)
+            # Si un provider vision est configuré, on passe aussi l'image pour meilleure correction
+            if config.get("vision_enabled") and config.get("vision_provider"):
+                corrected_text = correct_ocr_with_vision(file_path, ocr_text, confidence, config)
+            else:
+                corrected_text = correct_ocr_with_llm(ocr_text, confidence, config)
         else:
             corrected_text = ocr_text
     else:
