@@ -65,12 +65,50 @@
 
                 <!-- Upload -->
                 <div class='bg-white rounded-xl shadow-sm p-4'>
-                    <input type='file' id='fileInput' class='hidden' accept='image/*,application/pdf' capture='environment'>
-                    <button onclick='document.getElementById("fileInput").click()'
-                        class='w-full bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 text-sm font-medium'>
-                        📸 Scanner / Téléverser
-                    </button>
-                    <p id='uploadStatus' class='text-xs text-gray-400 mt-1 text-center hidden'>Traitement en cours...</p>
+                    <input type='file' id='fileInput' class='hidden' accept='image/*,application/pdf'>
+                    <input type='file' id='fileInputCamera' class='hidden' accept='image/*' capture='environment'>
+                    <div class='grid grid-cols-2 gap-2 mb-2'>
+                        <button onclick='triggerCapture("camera")'
+                            class='bg-blue-500 text-white py-2 px-3 rounded-lg hover:bg-blue-600 text-sm font-medium'>
+                            📷 Caméra
+                        </button>
+                        <button onclick='triggerCapture("file")'
+                            class='bg-gray-100 text-gray-700 py-2 px-3 rounded-lg hover:bg-gray-200 text-sm font-medium'>
+                            📁 Fichier
+                        </button>
+                    </div>
+
+                    <!-- Prévisualisation avant upload -->
+                    <div id='previewContainer' class='hidden mb-2'>
+                        <div class='relative'>
+                            <img id='previewImg' class='w-full rounded-lg border-2 border-blue-200 max-h-48 object-contain bg-gray-50' alt='Prévisualisation'>
+                            <button onclick='cancelPreview()' class='absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs leading-none'>✕</button>
+                        </div>
+                        <div id='qualityTips' class='mt-2 p-2 bg-yellow-50 rounded-lg border border-yellow-200 text-xs text-yellow-800 hidden'>
+                            <p class='font-semibold mb-1'>💡 Conseils pour une meilleure qualité :</p>
+                            <ul class='space-y-0.5 list-disc list-inside'>
+                                <li>Posez le document à plat sur une surface sombre</li>
+                                <li>Éclairage uniforme, évitez les reflets</li>
+                                <li>Photo bien droite, centrez le document</li>
+                            </ul>
+                        </div>
+                        <div class='flex gap-2 mt-2'>
+                            <button onclick='confirmUpload()'
+                                class='flex-1 bg-green-500 text-white py-1.5 rounded-lg hover:bg-green-600 text-sm font-medium'>
+                                ✅ Envoyer
+                            </button>
+                            <button onclick='triggerCapture("camera")'
+                                class='bg-gray-100 text-gray-600 py-1.5 px-3 rounded-lg hover:bg-gray-200 text-sm'>
+                                🔄 Reprendre
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id='uploadStatus' class='hidden'>
+                        <div class='flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded-lg'>
+                            <span>⏳ Traitement OCR + IA en cours...</span>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Recherche -->
@@ -1044,20 +1082,78 @@ async function loadEmailLogs() {
 }
 
 // ─── Upload ───────────────────────────────────────────────────────────────────
-document.getElementById('fileInput').onchange = async (e) => {
-    const file = e.target.files[0];
+let _pendingFile = null;
+
+function triggerCapture(mode) {
+    if (mode === 'camera') {
+        document.getElementById('fileInputCamera').click();
+    } else {
+        document.getElementById('fileInput').click();
+    }
+}
+
+function _handleFileSelected(file) {
     if (!file) return;
-    const status = document.getElementById('uploadStatus');
-    status.classList.remove('hidden');
+    _pendingFile = file;
+
+    // Prévisualisation
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const preview = document.getElementById('previewContainer');
+        const img = document.getElementById('previewImg');
+        const tips = document.getElementById('qualityTips');
+
+        img.src = e.target.result;
+        preview.classList.remove('hidden');
+
+        // Afficher conseils si image (pas PDF)
+        if (file.type.startsWith('image/')) {
+            // Analyser rapidement la qualité (taille)
+            if (file.size < 200 * 1024) { // < 200 Ko = probablement trop petite
+                tips.classList.remove('hidden');
+            } else {
+                tips.classList.add('hidden');
+            }
+        } else {
+            tips.classList.add('hidden');
+            img.src = ''; // PDF : pas de preview image
+            img.alt = `📄 ${file.name}`;
+            img.style.padding = '2rem';
+            img.style.fontSize = '3rem';
+        }
+    };
+    reader.readAsDataURL(file);
+}
+
+function cancelPreview() {
+    _pendingFile = null;
+    document.getElementById('previewContainer').classList.add('hidden');
+    document.getElementById('fileInput').value = '';
+    document.getElementById('fileInputCamera').value = '';
+}
+
+async function confirmUpload() {
+    if (!_pendingFile) return;
+    const file = _pendingFile;
+    _pendingFile = null;
+
+    document.getElementById('previewContainer').classList.add('hidden');
+    document.getElementById('uploadStatus').classList.remove('hidden');
+
     const formData = new FormData();
     formData.append('file', file);
     await fetch(`${API_URL}/upload`, {
         method: 'POST', body: formData, headers: { 'Authorization': authHeader }
     });
-    e.target.value = '';
-    setTimeout(() => status.classList.add('hidden'), 3000);
+
+    document.getElementById('fileInput').value = '';
+    document.getElementById('fileInputCamera').value = '';
+    setTimeout(() => document.getElementById('uploadStatus').classList.add('hidden'), 5000);
     loadDocuments();
-};
+}
+
+document.getElementById('fileInput').onchange = (e) => _handleFileSelected(e.target.files[0]);
+document.getElementById('fileInputCamera').onchange = (e) => _handleFileSelected(e.target.files[0]);
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

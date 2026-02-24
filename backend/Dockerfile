@@ -1,10 +1,16 @@
 FROM python:3.11-slim
 
-# Tesseract OCR + langue française
+# Tesseract OCR + langue française + dépendances OpenCV
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     tesseract-ocr-fra \
+    tesseract-ocr-eng \
     libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

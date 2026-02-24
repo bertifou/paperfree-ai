@@ -12,3 +12,5 @@ pwdlib[argon2]
 python-dotenv
 watchdog
 apscheduler
+opencv-python-headless
+numpy
