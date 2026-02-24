@@ -228,12 +228,15 @@ def connect_imap_oauth(host: str, user: str, access_token: str, port: int = 993)
     """
     Connexion IMAP en utilisant XOAUTH2 au lieu de LOGIN basique.
     Retourne une instance imaplib.IMAP4_SSL authentifiée.
+
+    IMPORTANT : imaplib.authenticate() encode LUI-MÊME la valeur retournée par le
+    callback en base64. Il ne faut donc PAS pré-encoder — on retourne la chaîne brute
+    en bytes (UTF-8), sinon on obtient un double-encodage → "Invalid SASL argument".
     """
     import imaplib
-    import base64
 
     auth_string = f"user={user}\x01auth=Bearer {access_token}\x01\x01"
-    auth_bytes  = base64.b64encode(auth_string.encode("utf-8"))
+    auth_bytes  = auth_string.encode("utf-8")   # brut, PAS base64
 
     mail = imaplib.IMAP4_SSL(host, port)
     mail.authenticate("XOAUTH2", lambda x: auth_bytes)
