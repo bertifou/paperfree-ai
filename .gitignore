@@ -1,8 +1,58 @@
-.a0proj/
-venv/
+# Python
 __pycache__/
-*.db
-.env
-storage/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+venv/
+env/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
 .DS_Store
+.a0proj/
+
+# Environnement et secrets
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+secrets/
+
+# Base de données
+*.db
+*.sqlite
+*.sqlite3
+
+# Stockage et uploads
+storage/
+uploads/
+watch/
+
+# Logs
+*.log
+logs/
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Docker
+docker-compose.override.yml
+
+# Backups
+*.backup
+*.bak
+*.old

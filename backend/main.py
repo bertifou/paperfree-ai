@@ -1,9 +1,8 @@
 """
 main.py — Point d'entrée de l'application PaperFree-AI.
 
-Ce fichier est volontairement minimal : il initialise l'app FastAPI,
+Ce fichier initialise l'app FastAPI avec tous les middlewares de sécurité,
 enregistre les routers et démarre les services de fond (watcher, email scheduler).
-Toute la logique métier est dans api/ et services/.
 """
 import threading
 import logging
@@ -11,8 +10,9 @@ import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from core.config import APP_VERSION
+from core.config import APP_VERSION, ALLOWED_ORIGINS
 from core.logging_filter import apply_sensitive_filter
+from core.middleware import SecurityHeadersMiddleware, setup_rate_limiting
 from api.auth      import router as auth_router
 from api.documents import router as documents_router
 from api.settings  import router as settings_router
@@ -30,15 +30,37 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # App FastAPI
 # ---------------------------------------------------------------------------
-app = FastAPI(title="PaperFree-AI API", version=APP_VERSION)
+app = FastAPI(
+    title="PaperFree-AI API", 
+    version=APP_VERSION,
+    docs_url="/docs",  # Swagger UI
+    redoc_url="/redoc"  # ReDoc
+)
 
+# ---------------------------------------------------------------------------
+# Middlewares de sécurité
+# ---------------------------------------------------------------------------
+
+# 1. CORS restreint aux origines autorisées
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
 )
+
+# 2. Headers de sécurité HTTP
+app.add_middleware(SecurityHeadersMiddleware)
+
+# 3. Rate limiting
+limiter = setup_rate_limiting(app)
+
+logger.info(f"✅ Security middlewares enabled:")
+logger.info(f"   - CORS: {ALLOWED_ORIGINS}")
+logger.info(f"   - Security Headers: Active")
+logger.info(f"   - Rate Limiting: Active")
 
 # ---------------------------------------------------------------------------
 # Routers
@@ -56,7 +78,7 @@ def _start_background_services():
     from services.watcher import start_folder_watcher
     threading.Thread(target=start_folder_watcher, daemon=True).start()
     email_monitor.scheduler.start()
-    logger.info(f"[app] PaperFree-AI v{APP_VERSION} démarré")
+    logger.info(f"[app] 🚀 PaperFree-AI v{APP_VERSION} démarré")
 
 _start_background_services()
 

@@ -8,6 +8,7 @@ Tout tourne en local : OCR, LLM, stockage.
 - **Capture Mobile** : Scan depuis le navigateur ou l'app compagnon.
 - **IA Flexible** : Compatible LM Studio, Ollama, OpenAI ou tout backend OpenAI-compatible.
 - **Accès Universel** : Réseau local + accès distant sécurisé.
+- **🔒 Sécurité Renforcée** : JWT, rate limiting, validation stricte des uploads.
 
 ## 🏗️ Stack
 - **Backend** : FastAPI (Python 3.11)
@@ -16,6 +17,7 @@ Tout tourne en local : OCR, LLM, stockage.
 - **DB** : SQLite
 - **Frontend** : HTML/JS vanilla (Tailwind CSS)
 - **Déploiement** : Docker Compose
+- **Sécurité** : JWT, rate limiting, validation MIME, headers sécurisés
 
 ## 🚀 Démarrage rapide
 
@@ -72,20 +74,24 @@ paperfree-ai/
 ## 🛠️ Fonctionnalités
 
 - [x] Upload de documents (PDF, images)
-- [x] OCR local (Tesseract, francais + anglais)
+- [x] OCR local (Tesseract, français + anglais)
 - [x] **Score de confiance OCR** — Tesseract retourne un score par mot (0–100 %)
-- [x] **Correction OCR par LLM** — le texte brut est envoyé au LLM pour corriger l/1/I, 0/O, mots coupés… Le score de confiance sert de signal d'incertitude
-- [x] **Analyse par vision (LLM multimodal)** — bypass OCR, envoie l'image directement au LLM. Compatible LM Studio (llava, minicpm-v…), OpenAI (gpt-4o) ou Anthropic (claude-3-5-sonnet). Configurable par provider dans les Paramètres
+- [x] **Correction OCR par LLM** — le texte brut est envoyé au LLM pour corriger l/1/I, 0/O, mots coupés…
+- [x] **Analyse par vision (LLM multimodal)** — bypass OCR, envoie l'image directement au LLM
 - [x] Classification automatique par LLM (Facture, Impôts, Santé…)
 - [x] Extraction structurée (date, montant, émetteur)
 - [x] Recherche plein texte
 - [x] Suppression de documents
 - [x] Surveillance de dossier (watchdog)
 - [x] Configuration LLM modifiable à chaud
-- [x] CORS configuré
+- [x] **Authentification JWT** — tokens sécurisés pour API et mobile
+- [x] **Rate limiting** — protection contre brute force et abus
+- [x] **Validation stricte des uploads** — vérification MIME, taille, extensions
+- [x] **Headers de sécurité HTTP** — HSTS, CSP, XSS protection
+- [x] **Logging de sécurité** — traçage des événements critiques
 - [ ] Surveillance boîte mail (email_monitor.py — branché prochainement)
 - [ ] Application mobile compagnon
-- [ ] Authentification JWT
+- [ ] Authentification multi-facteur (2FA)
 - [ ] Pagination
 
 ## 🔍 Pipeline OCR & Vision
