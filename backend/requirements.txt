@@ -14,3 +14,4 @@ watchdog
 apscheduler
 opencv-python-headless
 numpy
+reportlab

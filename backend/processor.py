@@ -118,40 +118,180 @@ def get_llm_config() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Conversion image → PDF
+# Génération PDF typographique (texte OCR → vrai PDF mise en page)
 # ---------------------------------------------------------------------------
 
-def image_to_pdf(image_path: str, output_dir: str) -> str | None:
+def generate_text_pdf(
+    text: str,
+    output_dir: str,
+    base_name: str,
+    meta: dict | None = None,
+) -> str | None:
     """
-    Convertit une image en PDF en la centrant sur une page A4.
+    Génère un PDF propre et lisible à partir du texte extrait (OCR/LLM).
+    Utilise ReportLab pour une vraie mise en page typographique.
+    meta peut contenir : category, summary, date, amount, issuer.
     Retourne le chemin du PDF généré, ou None en cas d'erreur.
     """
     try:
-        base = os.path.splitext(os.path.basename(image_path))[0]
-        pdf_path = os.path.join(output_dir, base + ".pdf")
+        from reportlab.lib.pagesizes import A4
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import cm
+        from reportlab.lib import colors
+        from reportlab.platypus import (
+            SimpleDocTemplate, Paragraph, Spacer, HRFlowable, Table, TableStyle
+        )
+        from reportlab.lib.enums import TA_LEFT, TA_CENTER
+        import datetime as dt
 
-        img = Image.open(image_path).convert("RGB")
+        pdf_name = base_name + "_ocr.pdf"
+        pdf_path = os.path.join(output_dir, pdf_name)
+        meta = meta or {}
 
-        # Dimensions A4 à 150 dpi (taille raisonnable pour aperçu)
-        A4_W_PX, A4_H_PX = 1240, 1754   # 210×297 mm à 150 dpi
+        doc = SimpleDocTemplate(
+            pdf_path,
+            pagesize=A4,
+            leftMargin=2.5 * cm,
+            rightMargin=2.5 * cm,
+            topMargin=2.5 * cm,
+            bottomMargin=2.5 * cm,
+        )
 
-        img_w, img_h = img.size
-        ratio = min(A4_W_PX / img_w, A4_H_PX / img_h)
-        new_w = int(img_w * ratio)
-        new_h = int(img_h * ratio)
-        img_resized = img.resize((new_w, new_h), Image.LANCZOS)
+        styles = getSampleStyleSheet()
 
-        # Page A4 blanche
-        page = Image.new("RGB", (A4_W_PX, A4_H_PX), (255, 255, 255))
-        offset_x = (A4_W_PX - new_w) // 2
-        offset_y = (A4_H_PX - new_h) // 2
-        page.paste(img_resized, (offset_x, offset_y))
+        # ── Styles personnalisés ──
+        title_style = ParagraphStyle(
+            "DocTitle",
+            parent=styles["Heading1"],
+            fontSize=16,
+            textColor=colors.HexColor("#1e3a5f"),
+            spaceAfter=4,
+        )
+        meta_label_style = ParagraphStyle(
+            "MetaLabel",
+            parent=styles["Normal"],
+            fontSize=8,
+            textColor=colors.HexColor("#6b7280"),
+            spaceBefore=0,
+            spaceAfter=0,
+        )
+        meta_value_style = ParagraphStyle(
+            "MetaValue",
+            parent=styles["Normal"],
+            fontSize=9,
+            textColor=colors.HexColor("#111827"),
+            fontName="Helvetica-Bold",
+            spaceBefore=0,
+            spaceAfter=0,
+        )
+        body_style = ParagraphStyle(
+            "Body",
+            parent=styles["Normal"],
+            fontSize=10,
+            leading=15,
+            textColor=colors.HexColor("#1f2937"),
+            spaceAfter=6,
+        )
+        footer_style = ParagraphStyle(
+            "Footer",
+            parent=styles["Normal"],
+            fontSize=7,
+            textColor=colors.HexColor("#9ca3af"),
+            alignment=TA_CENTER,
+        )
 
-        page.save(pdf_path, "PDF", resolution=150)
-        logger.info(f"[image-to-pdf] PDF généré : {pdf_path}")
+        story = []
+
+        # ── En-tête ──
+        category = meta.get("category") or "Document"
+        story.append(Paragraph(f"📄 {category}", title_style))
+
+        summary = meta.get("summary") or ""
+        if summary:
+            story.append(Paragraph(summary, ParagraphStyle(
+                "Summary", parent=styles["Normal"],
+                fontSize=10, textColor=colors.HexColor("#4b5563"), spaceAfter=10,
+                fontName="Helvetica-Oblique",
+            )))
+
+        # ── Bande de métadonnées ──
+        meta_fields = []
+        if meta.get("date"):
+            meta_fields.append([
+                Paragraph("DATE", meta_label_style),
+                Paragraph(meta["date"], meta_value_style),
+            ])
+        if meta.get("issuer"):
+            meta_fields.append([
+                Paragraph("ÉMETTEUR", meta_label_style),
+                Paragraph(meta["issuer"], meta_value_style),
+            ])
+        if meta.get("amount"):
+            meta_fields.append([
+                Paragraph("MONTANT", meta_label_style),
+                Paragraph(meta["amount"], meta_value_style),
+            ])
+
+        if meta_fields:
+            col_w = (A4[0] - 5 * cm) / len(meta_fields)
+            tbl = Table(
+                [
+                    [f[0] for f in meta_fields],
+                    [f[1] for f in meta_fields],
+                ],
+                colWidths=[col_w] * len(meta_fields),
+            )
+            tbl.setStyle(TableStyle([
+                ("BACKGROUND",  (0, 0), (-1, -1), colors.HexColor("#f3f4f6")),
+                ("ROUNDEDCORNERS", [6]),
+                ("TOPPADDING",  (0, 0), (-1, -1), 6),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("LEFTPADDING",  (0, 0), (-1, -1), 10),
+                ("RIGHTPADDING", (0, 0), (-1, -1), 10),
+                ("LINEBELOW",   (0, 0), (-1, 0), 0.5, colors.HexColor("#e5e7eb")),
+            ]))
+            story.append(tbl)
+            story.append(Spacer(1, 0.5 * cm))
+
+        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#e5e7eb")))
+        story.append(Spacer(1, 0.4 * cm))
+
+        # ── Corps du texte ──
+        if text and text.strip():
+            for line in text.splitlines():
+                line = line.strip()
+                if not line:
+                    story.append(Spacer(1, 0.2 * cm))
+                else:
+                    # Échapper les caractères spéciaux XML/HTML pour ReportLab
+                    safe = (line
+                            .replace("&", "&amp;")
+                            .replace("<", "&lt;")
+                            .replace(">", "&gt;"))
+                    story.append(Paragraph(safe, body_style))
+        else:
+            story.append(Paragraph(
+                "<i>Aucun texte extrait pour ce document.</i>",
+                ParagraphStyle("Empty", parent=styles["Normal"],
+                               fontSize=10, textColor=colors.HexColor("#9ca3af")),
+            ))
+
+        # ── Pied de page ──
+        story.append(Spacer(1, 0.6 * cm))
+        story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#e5e7eb")))
+        story.append(Spacer(1, 0.2 * cm))
+        generated = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
+        story.append(Paragraph(
+            f"Document généré par PaperFree-AI · {generated}",
+            footer_style,
+        ))
+
+        doc.build(story)
+        logger.info(f"[pdf-gen] PDF typographique généré : {pdf_path}")
         return pdf_path
+
     except Exception as e:
-        logger.error(f"[image-to-pdf] Erreur : {e}")
+        logger.error(f"[pdf-gen] Erreur ReportLab : {e}")
         return None
 
 

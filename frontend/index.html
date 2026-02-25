@@ -701,7 +701,14 @@ async function openDoc(id) {
         <!-- Aperçu -->
         <div id='dtTabPreview'>
             ${isPdf || hasPdfVersion
-                ? `<iframe src='${isPdf ? fileUrl : pdfUrl}' id='pdfViewer'></iframe>`
+                ? `<object data='${isPdf ? fileUrl : pdfUrl}#toolbar=0&navpanes=0'
+                       type='application/pdf' id='pdfViewer'
+                       style='width:100%;height:500px;border:none;border-radius:8px;'>
+                       <p class='text-gray-400 text-sm p-4'>
+                           Votre navigateur ne supporte pas l'aperçu PDF intégré.
+                           <a href='${isPdf ? fileUrl : pdfUrl}' class='text-blue-500 underline' target='_blank'>Ouvrir le PDF</a>
+                       </p>
+                   </object>`
                 : `<img src='${fileUrl}' class='max-w-full rounded border' alt='${doc.filename}'
                     onerror="this.outerHTML='<p class=text-gray-400 text-sm>Aperçu indisponible.</p>'">`
             }

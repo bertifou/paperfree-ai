@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from pwdlib import PasswordHash
 
-from processor import process_document, image_to_pdf
+from processor import process_document, generate_text_pdf
 from database import SessionLocal, Document, User, Setting, EmailLog
 import email_monitor
 
@@ -375,10 +375,18 @@ def _run_processing(doc_id: int, file_path: str):
             doc.amount   = analysis.get("amount")
             doc.issuer   = analysis.get("issuer")
 
-            # Générer un PDF si le fichier source est une image
+            # Générer un PDF typographique si le fichier source est une image
             ext = os.path.splitext(file_path)[1].lower()
             if ext in (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp"):
-                pdf_path = image_to_pdf(file_path, UPLOAD_DIR)
+                base_name = os.path.splitext(os.path.basename(file_path))[0]
+                meta = {
+                    "category": doc.category,
+                    "summary":  doc.summary,
+                    "date":     doc.doc_date,
+                    "amount":   doc.amount,
+                    "issuer":   doc.issuer,
+                }
+                pdf_path = generate_text_pdf(text, UPLOAD_DIR, base_name, meta)
                 if pdf_path:
                     doc.pdf_filename = os.path.basename(pdf_path)
 
