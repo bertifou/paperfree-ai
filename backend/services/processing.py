@@ -24,6 +24,11 @@ def run_processing(doc_id: int, file_path: str):
             doc.doc_date = analysis.get("date")
             doc.amount   = analysis.get("amount")
             doc.issuer   = analysis.get("issuer")
+            # Sources du pipeline (ex: ["vision","ocr+llm"] ou None)
+            sources = analysis.get("pipeline_sources")
+            if sources:
+                import json as _json
+                doc.pipeline_sources = _json.dumps(sources)
 
             # Générer un PDF searchable si la source est une image
             ext = os.path.splitext(file_path)[1].lower()

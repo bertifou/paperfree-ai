@@ -25,6 +25,7 @@ class Document(Base):
     issuer = Column(String, nullable=True)       # Organisme émetteur
     form_data = Column(Text, nullable=True)      # JSON: champs formulaire édités
     pdf_filename = Column(String, nullable=True) # PDF généré si entrée = image
+    pipeline_sources = Column(String, nullable=True)  # JSON: ["vision","ocr+llm"] ou null
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 
@@ -67,6 +68,9 @@ def _run_migrations():
     if "pdf_filename" not in existing_cols:
         cur.execute("ALTER TABLE documents ADD COLUMN pdf_filename TEXT")
         conn.commit()
+    if "pipeline_sources" not in existing_cols:
+        cur.execute("ALTER TABLE documents ADD COLUMN pipeline_sources TEXT")
+        conn.commit()
     conn.close()
 
 _run_migrations()
@@ -80,14 +84,16 @@ _run_migrations()
 # ---------------------------------------------------------------------------
 OCR_VISION_DEFAULTS = {
     # Correction OCR par LLM
-    "ocr_llm_correction":         "true",   # Activer la correction LLM du texte OCR
-    "ocr_correction_threshold":   "80",     # Score confiance (%) sous lequel on corrige toujours
+    "ocr_llm_correction":         "true",
+    "ocr_correction_threshold":   "80",
     # Vision
-    "llm_vision_enabled":         "false",  # Activer l'analyse par vision (image → LLM multimodal)
-    "llm_vision_provider":        "local",  # local | openai | anthropic
-    "llm_vision_model":           "",       # Vide = utiliser le modèle principal
-    "llm_vision_api_key":         "",       # Clé API si provider externe
-    "llm_vision_base_url":        "",       # URL si provider local différent du LLM principal
+    "llm_vision_enabled":         "false",
+    "llm_vision_provider":        "local",
+    "llm_vision_model":           "",
+    "llm_vision_api_key":         "",
+    "llm_vision_base_url":        "",
+    # Fusion double voie (vision activée)
+    "ocr_vision_fusion":          "true",
 }
 
 EMAIL_DEFAULTS = {

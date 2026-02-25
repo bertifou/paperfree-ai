@@ -298,7 +298,7 @@
                         <p class='text-xs text-gray-400 mt-1'>En dessous de ce seuil, la correction LLM est automatiquement appliquée. Au-dessus, une légère passe de nettoyage est faite si la correction est activée.</p>
                     </div>
                     <div class='mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700'>
-                        💡 <strong>LLM utilisé pour la correction :</strong> si l'analyse par vision (👁 ci-dessous) est activée, la correction OCR utilisera automatiquement ce même LLM multimodal (image + texte OCR). Sinon, elle utilise le LLM principal en mode texte uniquement.
+                        💡 <strong>Indépendant de la vision :</strong> cette correction fonctionne que la vision soit activée ou non. Quand la vision est activée, la voie OCR (b) bénéficiera en plus de la fusion avec le contexte vision.
                     </div>
                 </div>
 
@@ -351,6 +351,28 @@
                             <label class='block text-xs font-medium text-gray-700 mb-1'>URL base vision <span class='text-gray-400'>(local différent du LLM principal)</span></label>
                             <input type='text' id='settingVisionBaseUrl' placeholder='http://localhost:1234/v1'
                                 class='w-full p-2 border rounded text-sm'>
+                        </div>
+
+                        <!-- Fusion vision × OCR -->
+                        <div class='mt-3 pt-3 border-t border-purple-200'>
+                            <div class='flex items-center justify-between'>
+                                <div>
+                                    <p class='text-sm font-semibold text-purple-800'>🔀 Fusion vision × OCR (voie b)</p>
+                                    <p class='text-xs text-purple-600 mt-0.5'>
+                                        En parallèle de la vision directe, lance Tesseract puis corrige l'OCR
+                                        en utilisant le contexte JSON de la vision. Les deux JSON sont ensuite fusionnés.
+                                    </p>
+                                </div>
+                                <label class='relative inline-flex items-center cursor-pointer ml-4'>
+                                    <input type='checkbox' id='settingOcrVisionFusion' class='sr-only peer' checked>
+                                    <div class='w-10 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-purple-500 after:content-[""] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-5'></div>
+                                </label>
+                            </div>
+                            <div class='mt-2 text-xs text-purple-700 bg-purple-100 rounded-lg p-2'>
+                                🔬 <strong>Pipeline double voie :</strong>
+                                Voie a) Image → LLM multimodal → JSON &nbsp;|&nbsp;
+                                Voie b) OCR → correction enrichie → LLM → JSON &nbsp;→&nbsp; <strong>Merge final</strong>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -798,6 +820,18 @@ async function openDoc(id) {
                     ${doc.issuer   ? `<span class='meta-badge bg-gray-100 text-gray-600'>🏢 ${doc.issuer}</span>` : ''}
                     ${doc.doc_date ? `<span class='meta-badge bg-blue-50 text-blue-600'>📅 ${doc.doc_date}</span>` : ''}
                     ${doc.amount   ? `<span class='meta-badge bg-green-50 text-green-700'>💶 ${doc.amount}</span>` : ''}
+                    ${(() => {
+                        let sources = doc.pipeline_sources;
+                        try { if (typeof sources === 'string') sources = JSON.parse(sources); } catch(e) { sources = null; }
+                        if (!sources || !sources.length) return '';
+                        const hasVision = sources.includes('vision');
+                        const hasOcr    = sources.includes('ocr+llm');
+                        if (hasVision && hasOcr)
+                            return `<span class='meta-badge bg-purple-100 text-purple-700' title='Double voie : vision + OCR fusionnés'>🔀 Vision+OCR</span>`;
+                        if (hasVision)
+                            return `<span class='meta-badge bg-purple-100 text-purple-700' title='Analysé par vision multimodale'>👁 Vision</span>`;
+                        return `<span class='meta-badge bg-gray-100 text-gray-500' title='Analysé par OCR + LLM'>📝 OCR+LLM</span>`;
+                    })()}
                 </div>
             </div>
             <div class='flex gap-2 flex-shrink-0'>
@@ -1092,6 +1126,16 @@ async function openClasseurDoc(id) {
                     ${doc.issuer   ? `<span class='meta-badge bg-gray-100 text-gray-600'>🏢 ${escHtml(doc.issuer)}</span>` : ''}
                     ${doc.doc_date ? `<span class='meta-badge bg-blue-50 text-blue-600'>📅 ${doc.doc_date}</span>` : ''}
                     ${doc.amount   ? `<span class='meta-badge bg-green-50 text-green-700'>💶 ${escHtml(doc.amount)}</span>` : ''}
+                    ${(() => {
+                        let sources = doc.pipeline_sources;
+                        try { if (typeof sources === 'string') sources = JSON.parse(sources); } catch(e) { sources = null; }
+                        if (!sources || !sources.length) return '';
+                        if (sources.includes('vision') && sources.includes('ocr+llm'))
+                            return `<span class='meta-badge bg-purple-100 text-purple-700' title='Double voie : vision + OCR fusionnés'>🔀 Vision+OCR</span>`;
+                        if (sources.includes('vision'))
+                            return `<span class='meta-badge bg-purple-100 text-purple-700'>👁 Vision</span>`;
+                        return `<span class='meta-badge bg-gray-100 text-gray-500'>📝 OCR+LLM</span>`;
+                    })()}
                 </div>
             </div>
             <div class='flex gap-2 flex-shrink-0'>
@@ -1280,6 +1324,7 @@ async function loadSettings() {
     document.getElementById('settingVisionModel').value     = s.llm_vision_model    || '';
     document.getElementById('settingVisionApiKey').value    = s.llm_vision_api_key  || '';
     document.getElementById('settingVisionBaseUrl').value   = s.llm_vision_base_url || '';
+    document.getElementById('settingOcrVisionFusion').checked = (s.ocr_vision_fusion !== 'false');
     toggleVisionPanel();
     toggleVisionProvider();
     // Email
@@ -1326,6 +1371,7 @@ async function saveOcrVisionSettings() {
         ['llm_vision_model',         document.getElementById('settingVisionModel').value],
         ['llm_vision_api_key',       document.getElementById('settingVisionApiKey').value],
         ['llm_vision_base_url',      document.getElementById('settingVisionBaseUrl').value],
+        ['ocr_vision_fusion',        document.getElementById('settingOcrVisionFusion').checked ? 'true' : 'false'],
     ];
     for (const [k, v] of pairs) {
         await fetch(`${API_URL}/settings?key=${k}&value=${encodeURIComponent(v)}`,
