@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from pwdlib import PasswordHash
 
-from processor import process_document
+from processor import process_document, image_to_pdf
 from database import SessionLocal, Document, User, Setting, EmailLog
 import email_monitor
 
@@ -250,6 +250,11 @@ def delete_document(doc_id: int, db: Session = Depends(get_db), current_user: Us
     file_path = os.path.join(UPLOAD_DIR, doc.filename)
     if os.path.exists(file_path):
         os.remove(file_path)
+    # Supprimer le PDF généré si présent
+    if doc.pdf_filename:
+        pdf_path = os.path.join(UPLOAD_DIR, doc.pdf_filename)
+        if os.path.exists(pdf_path):
+            os.remove(pdf_path)
     db.delete(doc)
     db.commit()
     return {"message": f"Document {doc_id} supprimé"}
@@ -264,6 +269,20 @@ def download_document(doc_id: int, db: Session = Depends(get_db), current_user: 
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Fichier physique introuvable")
     return FileResponse(file_path, filename=doc.filename)
+
+
+@app.get("/documents/{doc_id}/pdf")
+def get_document_pdf(doc_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """Retourne le PDF généré depuis l'image source, ou 404 si non disponible."""
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document introuvable")
+    if not doc.pdf_filename:
+        raise HTTPException(status_code=404, detail="Aucun PDF généré pour ce document")
+    pdf_path = os.path.join(UPLOAD_DIR, doc.pdf_filename)
+    if not os.path.exists(pdf_path):
+        raise HTTPException(status_code=404, detail="Fichier PDF introuvable")
+    return FileResponse(pdf_path, filename=doc.pdf_filename, media_type="application/pdf")
 
 
 # ---------------------------------------------------------------------------
@@ -355,6 +374,14 @@ def _run_processing(doc_id: int, file_path: str):
             doc.doc_date = analysis.get("date")
             doc.amount   = analysis.get("amount")
             doc.issuer   = analysis.get("issuer")
+
+            # Générer un PDF si le fichier source est une image
+            ext = os.path.splitext(file_path)[1].lower()
+            if ext in (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp"):
+                pdf_path = image_to_pdf(file_path, UPLOAD_DIR)
+                if pdf_path:
+                    doc.pdf_filename = os.path.basename(pdf_path)
+
             db.commit()
             print(f"[processor] Doc #{doc_id} traité : {analysis.get('category')} — {analysis.get('summary')}")
     except Exception as e:

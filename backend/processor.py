@@ -118,6 +118,44 @@ def get_llm_config() -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Conversion image → PDF
+# ---------------------------------------------------------------------------
+
+def image_to_pdf(image_path: str, output_dir: str) -> str | None:
+    """
+    Convertit une image en PDF en la centrant sur une page A4.
+    Retourne le chemin du PDF généré, ou None en cas d'erreur.
+    """
+    try:
+        base = os.path.splitext(os.path.basename(image_path))[0]
+        pdf_path = os.path.join(output_dir, base + ".pdf")
+
+        img = Image.open(image_path).convert("RGB")
+
+        # Dimensions A4 à 150 dpi (taille raisonnable pour aperçu)
+        A4_W_PX, A4_H_PX = 1240, 1754   # 210×297 mm à 150 dpi
+
+        img_w, img_h = img.size
+        ratio = min(A4_W_PX / img_w, A4_H_PX / img_h)
+        new_w = int(img_w * ratio)
+        new_h = int(img_h * ratio)
+        img_resized = img.resize((new_w, new_h), Image.LANCZOS)
+
+        # Page A4 blanche
+        page = Image.new("RGB", (A4_W_PX, A4_H_PX), (255, 255, 255))
+        offset_x = (A4_W_PX - new_w) // 2
+        offset_y = (A4_H_PX - new_h) // 2
+        page.paste(img_resized, (offset_x, offset_y))
+
+        page.save(pdf_path, "PDF", resolution=150)
+        logger.info(f"[image-to-pdf] PDF généré : {pdf_path}")
+        return pdf_path
+    except Exception as e:
+        logger.error(f"[image-to-pdf] Erreur : {e}")
+        return None
+
+
+# ---------------------------------------------------------------------------
 # OCR avec score de confiance
 # ---------------------------------------------------------------------------
 

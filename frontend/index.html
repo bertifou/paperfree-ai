@@ -665,7 +665,9 @@ async function openDoc(id) {
     try { if (doc.form_data) formData = JSON.parse(doc.form_data); } catch(e) {}
 
     const isPdf = doc.filename.toLowerCase().endsWith('.pdf');
+    const hasPdfVersion = !!doc.pdf_filename;  // image convertie en PDF côté backend
     const fileUrl = `${API_URL}/documents/${id}/file`;
+    const pdfUrl  = `${API_URL}/documents/${id}/pdf`;
     const color = CATEGORY_COLORS[doc.category] || 'bg-gray-100 text-gray-500';
 
     document.getElementById('detailPanel').innerHTML = `
@@ -682,6 +684,8 @@ async function openDoc(id) {
             <div class='flex gap-2 flex-shrink-0'>
                 <a href='${fileUrl}' target='_blank'
                     class='text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded font-medium'>⬇ Télécharger</a>
+                ${hasPdfVersion ? `<a href='${pdfUrl}' target='_blank'
+                    class='text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded font-medium'>📄 PDF</a>` : ''}
                 <button onclick='deleteDoc(${doc.id})'
                     class='text-xs bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded font-medium'>🗑 Supprimer</button>
             </div>
@@ -696,8 +700,8 @@ async function openDoc(id) {
 
         <!-- Aperçu -->
         <div id='dtTabPreview'>
-            ${isPdf
-                ? `<iframe src='${fileUrl}' id='pdfViewer'></iframe>`
+            ${isPdf || hasPdfVersion
+                ? `<iframe src='${isPdf ? fileUrl : pdfUrl}' id='pdfViewer'></iframe>`
                 : `<img src='${fileUrl}' class='max-w-full rounded border' alt='${doc.filename}'
                     onerror="this.outerHTML='<p class=text-gray-400 text-sm>Aperçu indisponible.</p>'">`
             }

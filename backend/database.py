@@ -24,6 +24,7 @@ class Document(Base):
     amount = Column(String, nullable=True)       # Montant avec devise
     issuer = Column(String, nullable=True)       # Organisme émetteur
     form_data = Column(Text, nullable=True)      # JSON: champs formulaire édités
+    pdf_filename = Column(String, nullable=True) # PDF généré si entrée = image
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 
@@ -55,6 +56,20 @@ class EmailLog(Base):
 
 
 Base.metadata.create_all(bind=engine)
+
+# Migration légère : ajouter les colonnes manquantes si la DB existait déjà
+def _run_migrations():
+    import sqlite3
+    conn = sqlite3.connect(SQLALCHEMY_DATABASE_URL.replace("sqlite:///", ""))
+    cur = conn.cursor()
+    cur.execute("PRAGMA table_info(documents)")
+    existing_cols = {row[1] for row in cur.fetchall()}
+    if "pdf_filename" not in existing_cols:
+        cur.execute("ALTER TABLE documents ADD COLUMN pdf_filename TEXT")
+        conn.commit()
+    conn.close()
+
+_run_migrations()
 
 
 # ---------------------------------------------------------------------------
