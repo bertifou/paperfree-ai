@@ -96,22 +96,26 @@ paperfree-ai/
 
 ## 🔍 Pipeline OCR & Vision
 
+**Mode Vision DÉSACTIVÉ :**
 ```
-Image uploadée
-     │
-     ├─── Vision activée ? ──YES──→ Image en base64 → LLM multimodal → JSON structuré
-     │                                                                        │
-     │                                                                  Texte extrait (stored)
-     │
-     └─── Vision désactivée ──→ Tesseract OCR
-                                     │
-                               Score confiance (0–100%)
-                                     │
-                               Correction LLM si < seuil
-                               (ou systématique si activée)
-                                     │
-                               Texte corrigé → LLM → JSON structuré
+Tesseract OCR → Score confiance → Correction LLM (si < seuil) → Texte corrigé → LLM → JSON structuré
 ```
+
+**Mode Vision ACTIVÉ — double voie parallèle :**
+```
+                    ┌─── Voie a) ──→ Image base64 → LLM multimodal → JSON structuré ──┐
+Image uploadée ─────┤                                                                   ├──→ Merge JSON final
+                    └─── Voie b) ──→ Tesseract OCR → Score confiance                  │
+                                          │                                             │
+                                    Fusion/correction avec contexte JSON vision ────────┘
+                                          │
+                                    Texte corrigé → LLM → JSON structuré
+```
+
+- **Voie a)** : analyse directe par vision, très rapide, robuste sur manuscrits/tampons
+- **Voie b)** : OCR enrichi par le contexte vision → meilleure précision sur les chiffres et dates
+- **Merge** : les champs structurés de la voie b) ont priorité ; la voie a) comble les lacunes
+- **Correction LLM OCR** : entièrement indépendante — activable/désactivable quel que soit le mode vision
 
 | Mode | Avantages | Inconvénients |
 |------|-----------|---------------|

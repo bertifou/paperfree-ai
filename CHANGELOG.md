@@ -103,6 +103,25 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [0.6.0] - 2026-02-25
+
+### 🆕 Nouveau pipeline vision — double voie parallèle
+
+- **Vision DÉSACTIVÉE** : correction LLM OCR désormais entièrement indépendante de la config vision
+  - Activable/désactivable séparément
+  - Seuil de confiance propre
+  - N'utilise plus `vision_enabled` comme condition
+- **Vision ACTIVÉE** : deux voies traitées en parallèle (`ThreadPoolExecutor`)
+  - **Voie a)** Image base64 → LLM multimodal → JSON structuré
+  - **Voie b)** Tesseract OCR → Score confiance → Fusion/correction avec contexte JSON vision → LLM → JSON structuré
+  - **Merge** intelligent des deux JSON (voie b prioritaire sur les champs structurés)
+- Nouveau paramètre `ocr_vision_fusion` : active/désactive la fusion vision dans la voie b)
+- Nouvelle fonction `correct_ocr_with_vision_fusion()` remplace `correct_ocr_with_vision()`
+- Nouvelle fonction `_merge_analyses()` pour combiner les deux JSON
+- README mis à jour avec le schéma du nouveau pipeline
+
+---
+
 ## [0.4.0] - 2025-01-XX
 
 ### Ajouté

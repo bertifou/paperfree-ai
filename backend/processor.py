@@ -5,6 +5,7 @@ import logging
 import subprocess
 import tempfile
 import shutil
+import concurrent.futures
 import pytesseract
 from PIL import Image
 from enhance import enhance_image
@@ -30,8 +31,6 @@ KNOWN_BACKENDS = {
     "gemini":    "https://generativelanguage.googleapis.com/v1beta/openai/",
 }
 
-# Modèles Gemini recommandés (exposés via /backends pour l'UI)
-# Note : "gemini-3" n'existe pas encore — le dernier preview est gemini-2.5-flash
 GEMINI_MODELS = [
     "gemini-2.5-flash-preview-05-20",
     "gemini-2.5-pro-preview-05-06",
@@ -63,12 +62,14 @@ Retourne UNIQUEMENT le texte corrigé, sans commentaires ni explications.
 Conserve la structure et la mise en page originale autant que possible.
 Score de confiance OCR fourni : {confidence}% — plus il est bas, plus la correction est importante."""
 
-OCR_VISION_CORRECTION_PROMPT = """Tu es un expert en correction de texte OCR pour des documents administratifs français.
+OCR_VISION_FUSION_PROMPT = """Tu es un expert en correction de texte OCR pour des documents administratifs français.
 L'image originale du document t'est fournie ainsi que le texte extrait automatiquement par OCR.
+Une analyse préliminaire par vision a également été effectuée et est fournie comme contexte.
 
-Score de confiance OCR : {confidence}% — plus il est bas, plus les erreurs sont probables.
+Score de confiance OCR : {confidence}%
+Contexte vision (analyse préliminaire) : {vision_context}
 
-Erreurs OCR typiques à corriger en t'aidant de l'image :
+Erreurs OCR typiques à corriger en t'aidant de l'image et du contexte vision :
 - Lettres confondues (l/1/I, 0/O, rn/m, cl/d, etc.)
 - Espaces manquants ou en trop
 - Ponctuation incorrecte
@@ -93,6 +94,7 @@ On te fournit l'image d'un document. Analyse-la et réponds UNIQUEMENT avec un o
 }
 Ne réponds rien d'autre que le JSON."""
 
+
 def get_llm_config() -> dict:
     """Lit la config LLM depuis la DB, avec fallback sur les variables d'env."""
     try:
@@ -106,19 +108,21 @@ def get_llm_config() -> dict:
             "model":           settings.get("llm_model")           or DEFAULT_LLM_CONFIG["model"],
             # Vision
             "vision_enabled":  settings.get("llm_vision_enabled",  "false").lower() == "true",
-            "vision_provider": settings.get("llm_vision_provider", "local"),   # local | openai | anthropic
-            "vision_model":    settings.get("llm_vision_model",    ""),        # vide = utiliser model principal
+            "vision_provider": settings.get("llm_vision_provider", "local"),
+            "vision_model":    settings.get("llm_vision_model",    ""),
             "vision_api_key":  settings.get("llm_vision_api_key",  ""),
             "vision_base_url": settings.get("llm_vision_base_url", ""),
-            # OCR
-            "ocr_llm_correction": settings.get("ocr_llm_correction", "true").lower() == "true",
-            "ocr_correction_threshold": int(settings.get("ocr_correction_threshold", "80")),
+            # OCR — correction indépendante de la vision
+            "ocr_llm_correction":          settings.get("ocr_llm_correction", "true").lower() == "true",
+            "ocr_correction_threshold":    int(settings.get("ocr_correction_threshold", "80")),
+            "ocr_vision_fusion":           settings.get("ocr_vision_fusion", "true").lower() == "true",
         }
     except Exception:
         return {**DEFAULT_LLM_CONFIG,
                 "vision_enabled": False, "vision_provider": "local",
                 "vision_model": "", "vision_api_key": "", "vision_base_url": "",
-                "ocr_llm_correction": True, "ocr_correction_threshold": 80}
+                "ocr_llm_correction": True, "ocr_correction_threshold": 80,
+                "ocr_vision_fusion": True}
 
 
 # ---------------------------------------------------------------------------
@@ -132,59 +136,30 @@ def generate_text_pdf(
     meta: dict | None = None,
     image_path: str | None = None,
 ) -> str | None:
-    """
-    Génère un PDF avec :
-    - Si image_path fourni : image originale en arrière-plan + texte OCR invisible
-      par-dessus (rendu par Tesseract en mode pdf). Visuellement identique au document,
-      mais texte sélectionnable/cherchable.
-    - Sinon : fallback PDF typographique ReportLab avec le texte seulement.
-    Retourne le chemin du PDF généré, ou None en cas d'erreur.
-    """
     if image_path and os.path.exists(image_path):
         return _generate_searchable_pdf(image_path, output_dir, base_name)
     return _generate_text_only_pdf(text, output_dir, base_name, meta)
 
 
 def _generate_searchable_pdf(image_path: str, output_dir: str, base_name: str) -> str | None:
-    """
-    Améliore l'image (deskew, déperspective, contraste, débruitage) puis
-    utilise Tesseract en mode sortie PDF pour produire un document avec :
-    - L'image améliorée en fond (visuellement fidèle au document)
-    - Le texte OCR superposé de façon invisible (sélectionnable, cherchable)
-    """
     try:
-        # Prétraitement : image améliorée dans un dossier temporaire
         enhanced_path = enhance_image(image_path, output_dir=None)
         cleanup_enhanced = (enhanced_path != image_path)
-
         with tempfile.TemporaryDirectory() as tmp:
             tmp_base = os.path.join(tmp, "out")
             subprocess.run(
-                [
-                    "tesseract",
-                    enhanced_path,
-                    tmp_base,
-                    "-l", "fra+eng",
-                    "--dpi", "300",
-                    "pdf",
-                ],
-                check=True,
-                capture_output=True,
+                ["tesseract", enhanced_path, tmp_base, "-l", "fra+eng", "--dpi", "300", "pdf"],
+                check=True, capture_output=True,
             )
             tmp_pdf = tmp_base + ".pdf"
             if not os.path.exists(tmp_pdf):
                 raise FileNotFoundError("Tesseract n'a pas produit de PDF")
-
             dest = os.path.join(output_dir, base_name + "_scan.pdf")
             shutil.move(tmp_pdf, dest)
-
-        # Nettoyage de l'image intermédiaire si elle a été créée
         if cleanup_enhanced and os.path.exists(enhanced_path):
             os.remove(enhanced_path)
-
         logger.info(f"[pdf-scan] PDF searchable généré : {dest}")
         return dest
-
     except subprocess.CalledProcessError as e:
         logger.error(f"[pdf-scan] Tesseract erreur : {e.stderr.decode()}")
         return None
@@ -196,15 +171,12 @@ def _generate_searchable_pdf(image_path: str, output_dir: str, base_name: str) -
 def _generate_text_only_pdf(
     text: str, output_dir: str, base_name: str, meta: dict | None
 ) -> str | None:
-    """Fallback : PDF typographique ReportLab si pas d'image disponible."""
     try:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import cm
         from reportlab.lib import colors
         from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
-        from reportlab.lib.enums import TA_CENTER
-        import datetime as dt
 
         pdf_path = os.path.join(output_dir, base_name + "_ocr.pdf")
         meta = meta or {}
@@ -221,8 +193,7 @@ def _generate_text_only_pdf(
         if meta.get("summary"):
             story.append(Paragraph(f"<i>{meta['summary']}</i>", styles["Normal"]))
             story.append(Spacer(1, 0.4*cm))
-        story.append(HRFlowable(width="100%", thickness=1,
-                                color=colors.HexColor("#e5e7eb")))
+        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#e5e7eb")))
         story.append(Spacer(1, 0.3*cm))
         for line in (text or "").splitlines():
             safe = line.strip().replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
@@ -240,22 +211,13 @@ def _generate_text_only_pdf(
 # ---------------------------------------------------------------------------
 
 def extract_text_with_confidence(file_path: str) -> tuple[str, float]:
-    """
-    Extrait le texte d'une image avec le score de confiance moyen Tesseract.
-    Retourne (texte, confidence_0_to_100).
-    Pour les PDF, retourne (texte, 100.0) car extraction native = fiable.
-    """
     if file_path.lower().endswith(".pdf"):
-        text = _extract_pdf_text(file_path)
-        return text, 100.0
-
+        return _extract_pdf_text(file_path), 100.0
     try:
         img = Image.open(file_path)
-        # Données détaillées incluant les scores par mot
         data = pytesseract.image_to_data(img, lang="fra+eng", output_type=pytesseract.Output.DICT)
         confidences = [int(c) for c in data["conf"] if int(c) >= 0]
         avg_conf = sum(confidences) / len(confidences) if confidences else 0.0
-        # Texte brut standard
         text = pytesseract.image_to_string(img, lang="fra+eng").strip()
         logger.info(f"[ocr] Confiance moyenne : {avg_conf:.1f}% ({len(confidences)} mots)")
         return text, avg_conf
@@ -264,7 +226,6 @@ def extract_text_with_confidence(file_path: str) -> tuple[str, float]:
         return "", 0.0
 
 def _extract_pdf_text(file_path: str) -> str:
-    """Extraction texte native depuis un PDF."""
     text = ""
     with open(file_path, "rb") as f:
         reader = PyPDF2.PdfReader(f)
@@ -276,25 +237,26 @@ def _extract_pdf_text(file_path: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Correction OCR par LLM (texte uniquement)
+# Correction OCR — indépendante (texte seul)
 # ---------------------------------------------------------------------------
 
 def correct_ocr_with_llm(text: str, confidence: float, config: dict) -> str:
     """
-    Soumet le texte OCR brut au LLM pour correction des erreurs typiques.
-    Utilisé quand la confiance est sous le seuil OU systématiquement selon config.
+    Correction OCR par LLM texte uniquement.
+    Activée si ocr_llm_correction=True ET confiance < seuil.
+    Totalement indépendante de la configuration vision.
     """
     if not text.strip():
         return text
-
-    threshold = config.get("ocr_correction_threshold", 80)
     if not config.get("ocr_llm_correction", True):
-        return text  # Correction désactivée dans les settings
+        return text
+    threshold = config.get("ocr_correction_threshold", 80)
+    if confidence >= threshold:
+        logger.info(f"[ocr-correction] Confiance {confidence:.0f}% ≥ seuil {threshold}% → pas de correction")
+        return text
 
-    # Toujours corriger si confiance < seuil, sinon légère passe de nettoyage
+    logger.info(f"[ocr-correction] Confiance {confidence:.0f}% < seuil {threshold}% → correction LLM")
     prompt = OCR_CORRECTION_PROMPT.format(confidence=f"{confidence:.0f}")
-    logger.info(f"[ocr-correction] Confiance {confidence:.0f}% → correction LLM activée")
-
     try:
         client = OpenAI(base_url=config["base_url"], api_key=config["api_key"])
         response = client.chat.completions.create(
@@ -313,24 +275,37 @@ def correct_ocr_with_llm(text: str, confidence: float, config: dict) -> str:
         return text
 
 
-def correct_ocr_with_vision(file_path: str, ocr_text: str, confidence: float, config: dict) -> str:
+# ---------------------------------------------------------------------------
+# Correction OCR avec fusion vision — utilisée dans la voie b) vision activée
+# ---------------------------------------------------------------------------
+
+def correct_ocr_with_vision_fusion(
+    file_path: str, ocr_text: str, confidence: float,
+    config: dict, vision_context: dict | None = None
+) -> str:
     """
-    Correction OCR avancée : passe l'image + le texte OCR + le score de confiance
-    au LLM vision pour corriger les erreurs en se basant sur le document original.
-    Utilisé uniquement si vision activée et fichier image disponible.
+    Correction OCR avancée : image + texte OCR + contexte JSON vision préliminaire.
+    Le contexte vision enrichit la correction pour aligner noms, montants, dates.
+    Fallback sur correct_ocr_with_llm si erreur vision.
     """
     if not ocr_text.strip():
         return ocr_text
     if not config.get("ocr_llm_correction", True):
         return ocr_text
 
-    logger.info(f"[ocr-vision-correction] Confiance {confidence:.0f}% → correction vision activée")
+    threshold = config.get("ocr_correction_threshold", 80)
+    if confidence >= threshold and not vision_context:
+        logger.info(f"[ocr-fusion] Confiance {confidence:.0f}% ≥ seuil, pas de fusion nécessaire")
+        return correct_ocr_with_llm(ocr_text, confidence, config)
+
+    logger.info(f"[ocr-fusion] Correction avec fusion vision (confiance={confidence:.0f}%)")
     try:
         mime, b64 = _image_to_base64(file_path)
         client, model = _get_vision_client(config)
-
-        prompt = OCR_VISION_CORRECTION_PROMPT.format(
+        ctx_str = json.dumps(vision_context, ensure_ascii=False) if vision_context else "Non disponible"
+        prompt = OCR_VISION_FUSION_PROMPT.format(
             confidence=f"{confidence:.0f}",
+            vision_context=ctx_str[:500],
             ocr_text=ocr_text[:3000],
         )
         response = client.chat.completions.create(
@@ -347,50 +322,39 @@ def correct_ocr_with_vision(file_path: str, ocr_text: str, confidence: float, co
             max_tokens=2000,
         )
         corrected = response.choices[0].message.content.strip()
-        logger.info(f"[ocr-vision-correction] Texte corrigé ({len(corrected)} chars)")
+        logger.info(f"[ocr-fusion] Texte corrigé ({len(corrected)} chars)")
         return corrected
     except Exception as e:
-        logger.warning(f"[ocr-vision-correction] Erreur, fallback correction texte : {e}")
+        logger.warning(f"[ocr-fusion] Erreur vision, fallback correction texte : {e}")
         return correct_ocr_with_llm(ocr_text, confidence, config)
 
 
 # ---------------------------------------------------------------------------
-# Analyse par vision (image → LLM multimodal)
+# Vision — client et utilitaires
 # ---------------------------------------------------------------------------
 
 def _get_vision_client(config: dict) -> tuple:
-    """Retourne (client, model) selon le provider vision configuré."""
     provider = config.get("vision_provider", "local")
     v_model  = config.get("vision_model") or config.get("model", "")
     v_key    = config.get("vision_api_key") or config.get("api_key", "")
     v_url    = config.get("vision_base_url") or config.get("base_url", "")
 
     if provider == "openai":
-        client = OpenAI(api_key=v_key or os.getenv("OPENAI_API_KEY", ""))
-        model  = v_model or "gpt-4o"
+        return OpenAI(api_key=v_key or os.getenv("OPENAI_API_KEY", "")), v_model or "gpt-4o"
     elif provider == "anthropic":
-        # Utilise l'API Anthropic via interface compatible OpenAI (claude-3-5-sonnet)
-        client = OpenAI(
+        return OpenAI(
             base_url="https://api.anthropic.com/v1",
             api_key=v_key or os.getenv("ANTHROPIC_API_KEY", ""),
-        )
-        model = v_model or "claude-3-5-sonnet-20241022"
+        ), v_model or "claude-3-5-sonnet-20241022"
     elif provider == "gemini":
-        # Gemini via son endpoint compatible OpenAI
-        client = OpenAI(
+        return OpenAI(
             base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
             api_key=v_key or os.getenv("GEMINI_API_KEY", ""),
-        )
-        model = v_model or "gemini-2.5-flash-preview-05-20"
+        ), v_model or "gemini-2.5-flash-preview-05-20"
     else:
-        # Local (LM Studio / Ollama avec modèle vision — ex: llava, minicpm-v)
-        client = OpenAI(base_url=v_url, api_key=v_key)
-        model  = v_model or config.get("model", "local-model")
-
-    return client, model
+        return OpenAI(base_url=v_url, api_key=v_key), v_model or config.get("model", "local-model")
 
 def _image_to_base64(file_path: str) -> tuple[str, str]:
-    """Encode une image en base64 et retourne (data_url_prefix, b64_string)."""
     ext = os.path.splitext(file_path)[1].lower()
     mime_map = {".jpg": "image/jpeg", ".jpeg": "image/jpeg",
                 ".png": "image/png", ".bmp": "image/bmp",
@@ -402,15 +366,11 @@ def _image_to_base64(file_path: str) -> tuple[str, str]:
 
 
 def analyze_with_vision(file_path: str, config: dict) -> dict:
-    """
-    Analyse un document image via un LLM multimodal (vision).
-    Retourne le dict structuré incluant extracted_text.
-    """
-    logger.info(f"[vision] Analyse vision de : {file_path}")
+    """Voie a) : Image base64 → LLM multimodal → JSON structuré."""
+    logger.info(f"[vision-a] Analyse vision directe : {file_path}")
     try:
         mime, b64 = _image_to_base64(file_path)
         client, model = _get_vision_client(config)
-
         response = client.chat.completions.create(
             model=model,
             messages=[{
@@ -430,14 +390,14 @@ def analyze_with_vision(file_path: str, config: dict) -> dict:
             if raw.startswith("json"):
                 raw = raw[4:]
         result = json.loads(raw)
-        logger.info(f"[vision] Résultat : {result.get('category')} — {result.get('summary')}")
+        logger.info(f"[vision-a] {result.get('category')} — {result.get('summary')}")
         return result
     except json.JSONDecodeError:
-        logger.warning("[vision] JSON invalide, fallback analyse texte")
+        logger.warning("[vision-a] JSON invalide")
         return {"category": "Autre", "summary": "Analyse vision impossible (JSON invalide)",
                 "date": None, "amount": None, "issuer": None, "extracted_text": ""}
     except Exception as e:
-        logger.error(f"[vision] Erreur : {e}")
+        logger.error(f"[vision-a] Erreur : {e}")
         return {"category": "Erreur", "summary": str(e)[:100],
                 "date": None, "amount": None, "issuer": None, "extracted_text": ""}
 
@@ -447,7 +407,6 @@ def analyze_with_vision(file_path: str, config: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 def analyze_with_llm(text: str, config: dict | None = None) -> dict:
-    """Envoie le texte au LLM et retourne un dict structuré."""
     if config is None:
         config = get_llm_config()
     try:
@@ -474,23 +433,45 @@ def analyze_with_llm(text: str, config: dict | None = None) -> dict:
                 "date": None, "amount": None, "issuer": None}
 
 
+def _merge_analyses(vision_json: dict, ocr_json: dict) -> dict:
+    """
+    Fusionne les deux JSON (voie a et voie b).
+    Priorité à la voie b (OCR corrigé + LLM) pour le texte structuré,
+    mais garde les champs vision si la voie b a échoué ou est moins précise.
+    """
+    merged = {**vision_json}
+    for key in ("category", "summary", "date", "amount", "issuer"):
+        val_b = ocr_json.get(key)
+        if val_b and val_b not in ("Erreur", "Autre", None):
+            merged[key] = val_b
+    merged["extracted_text"] = vision_json.get("extracted_text", "")
+    merged["pipeline_sources"] = ["vision", "ocr+llm"]
+    return merged
+
+
 # ---------------------------------------------------------------------------
-# Point d'entrée principal
+# Point d'entrée principal — nouveau pipeline
 # ---------------------------------------------------------------------------
 
 def process_document(file_path: str) -> tuple[str, dict]:
     """
-    Pipeline complet : (enhance →) OCR → correction LLM → analyse structurée.
-    Si vision activée et fichier image → bypass OCR, analyse directe par vision.
-    Retourne (texte_brut_ou_corrigé, analyse_dict).
+    Pipeline complet selon le mode configuré :
+
+    Vision DÉSACTIVÉE :
+      Tesseract OCR → Score confiance → Correction LLM si < seuil → Texte corrigé → LLM → JSON
+
+    Vision ACTIVÉE (double voie parallèle) :
+      Voie a) Image base64 → LLM multimodal → JSON structuré
+      Voie b) Tesseract OCR → Score confiance → Fusion/correction avec JSON vision → LLM → JSON
+      → Merge des deux JSON (voie b prioritaire sur les champs structurés)
+
+    Retourne (texte_extrait_ou_corrigé, analyse_dict).
     """
     config = get_llm_config()
     ext = os.path.splitext(file_path)[1].lower()
     is_image = ext in (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp")
 
     # ── Prétraitement image ─────────────────────────────────────────────────
-    # On améliore l'image avant tout traitement (OCR ou vision).
-    # L'image enhanced est temporaire : file_path original reste inchangé.
     enhanced_path = file_path
     cleanup_enhanced = False
     if is_image:
@@ -500,27 +481,46 @@ def process_document(file_path: str) -> tuple[str, dict]:
             logger.info(f"[processor] Image améliorée : {os.path.basename(enhanced_path)}")
 
     try:
-        # ── Chemin vision (image + vision activée) ──────────────────────────
+        # ── Vision ACTIVÉE — double voie parallèle ──────────────────────────
         if is_image and config.get("vision_enabled"):
-            logger.info("[processor] Mode VISION activé")
-            vision_result = analyze_with_vision(enhanced_path, config)
-            extracted_text = vision_result.pop("extracted_text", "") or ""
-            if not extracted_text:
-                ocr_text, _ = extract_text_with_confidence(enhanced_path)
-                extracted_text = ocr_text
-            return extracted_text, vision_result
+            logger.info("[processor] Mode VISION activé — double voie parallèle")
 
-        # ── Chemin OCR + correction LLM + analyse ───────────────────────────
+            # Lancer les deux voies en parallèle
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                # Voie a) : vision directe
+                future_a = executor.submit(analyze_with_vision, enhanced_path, config)
+                # Voie b) commence par l'OCR (indépendant)
+                future_ocr = executor.submit(extract_text_with_confidence, enhanced_path)
+
+                vision_result = future_a.result()
+                ocr_text, confidence = future_ocr.result()
+
+            logger.info(f"[processor] Voie a) JSON vision prêt — Voie b) OCR confiance={confidence:.1f}%")
+
+            # Voie b) : correction/fusion OCR avec contexte vision, puis analyse LLM
+            extracted_text = vision_result.get("extracted_text", "") or ocr_text
+            if ocr_text.strip() and config.get("ocr_vision_fusion", True):
+                corrected_text = correct_ocr_with_vision_fusion(
+                    enhanced_path, ocr_text, confidence, config,
+                    vision_context={k: v for k, v in vision_result.items() if k != "extracted_text"}
+                )
+            elif ocr_text.strip():
+                corrected_text = correct_ocr_with_llm(ocr_text, confidence, config)
+            else:
+                corrected_text = extracted_text
+
+            ocr_json = analyze_with_llm(corrected_text, config)
+            logger.info(f"[processor] Voie b) JSON OCR+LLM : {ocr_json.get('category')}")
+
+            # Fusion des deux JSON
+            final_result = _merge_analyses(vision_result, ocr_json)
+            return corrected_text or extracted_text, final_result
+
+        # ── Vision DÉSACTIVÉE — pipeline OCR classique ──────────────────────
         if is_image:
             ocr_text, confidence = extract_text_with_confidence(enhanced_path)
             logger.info(f"[processor] OCR confiance={confidence:.1f}%")
-            if ocr_text.strip():
-                if config.get("vision_enabled") and config.get("vision_provider"):
-                    corrected_text = correct_ocr_with_vision(enhanced_path, ocr_text, confidence, config)
-                else:
-                    corrected_text = correct_ocr_with_llm(ocr_text, confidence, config)
-            else:
-                corrected_text = ocr_text
+            corrected_text = correct_ocr_with_llm(ocr_text, confidence, config) if ocr_text.strip() else ocr_text
         else:
             corrected_text = _extract_pdf_text(file_path)
             confidence = 100.0
@@ -531,7 +531,6 @@ def process_document(file_path: str) -> tuple[str, dict]:
         return corrected_text, analysis
 
     finally:
-        # Nettoyage de l'image améliorée temporaire
         if cleanup_enhanced and os.path.exists(enhanced_path):
             try:
                 os.remove(enhanced_path)
