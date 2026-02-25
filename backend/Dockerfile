@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     libxext6 \
     libxrender-dev \
     libgomp1 \
+    libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

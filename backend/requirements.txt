@@ -17,4 +17,4 @@ numpy
 reportlab
 python-jose[cryptography]
 slowapi
-python-magic-bin
+python-magic
