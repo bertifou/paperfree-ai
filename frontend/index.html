@@ -608,11 +608,19 @@ function fillImap(host) {
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 async function checkStatus() {
-    const res = await fetch(`${API_URL}/status`);
-    const data = await res.json();
-    if (data.setup_required) { showSection('setup'); }
-    else if (!authHeader)    { showSection('login'); }
-    else { showSection('app'); loadDocuments(); loadSettings(); }
+    try {
+        const res = await fetch(`${API_URL}/status`);
+        if (!res.ok) { showSection('login'); return; }
+        const data = await res.json();
+        if (data.setup_required) { showSection('setup'); }
+        else if (!authHeader)    { showSection('login'); }
+        else { showSection('app'); loadDocuments(); loadSettings(); }
+    } catch(e) {
+        // Backend inaccessible — afficher login avec message d'erreur
+        showSection('login');
+        const el = document.getElementById('loginError');
+        if (el) { el.textContent = '⚠️ Impossible de joindre le serveur. Vérifiez que le backend est démarré.'; el.classList.remove('hidden'); }
+    }
 }
 
 function showSection(name) {
@@ -624,11 +632,19 @@ async function handleSetup() {
     const user = document.getElementById('setupUser').value;
     const pass = document.getElementById('setupPass').value;
     const url  = document.getElementById('setupLlm').value;
-    const res = await fetch(`${API_URL}/setup?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&llm_url=${encodeURIComponent(url)}`, { method: 'POST' });
-    if (res.ok) { showSection('login'); }
-    else {
+    try {
+        const res = await fetch(`${API_URL}/setup?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&llm_url=${encodeURIComponent(url)}`, { method: 'POST' });
+        if (res.ok) { showSection('login'); }
+        else {
+            const err = document.getElementById('setupError');
+            let msg = 'Erreur lors de la configuration';
+            try { const body = await res.json(); msg = body.detail || body.message || JSON.stringify(body); } catch(e) {}
+            err.textContent = msg;
+            err.classList.remove('hidden');
+        }
+    } catch(e) {
         const err = document.getElementById('setupError');
-        err.textContent = (await res.json()).detail || 'Erreur';
+        err.textContent = '⚠️ Impossible de joindre le serveur : ' + e.message;
         err.classList.remove('hidden');
     }
 }
