@@ -68,7 +68,7 @@ def get_status(db: Session = Depends(get_db)):
 
 @router.post("/setup", response_model=dict)
 @limiter.limit("3/minute")
-def setup_admin(
+async def setup_admin(
     request: Request,
     setup_data: SetupRequest,
     db: Session = Depends(get_db),
@@ -104,7 +104,7 @@ def setup_admin(
 
 @router.post("/login", response_model=TokenResponse)
 @limiter.limit("5/minute")
-def login(
+async def login(
     request: Request,
     login_data: LoginRequest,
     db: Session = Depends(get_db),

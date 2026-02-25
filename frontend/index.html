@@ -648,8 +648,21 @@ async function handleSetup() {
         else {
             const err = document.getElementById('setupError');
             let msg = 'Erreur lors de la configuration';
-            try { const body = await res.json(); msg = body.detail || body.message || JSON.stringify(body); } catch(e) {}
-            err.textContent = msg;
+            try {
+                const body = await res.json();
+                console.error('Setup error body:', body);
+                if (body.detail) {
+                    // Pydantic retourne detail comme tableau [{loc,msg,type}]
+                    if (Array.isArray(body.detail)) {
+                        msg = body.detail.map(e => e.msg || JSON.stringify(e)).join(' | ');
+                    } else {
+                        msg = body.detail;
+                    }
+                } else {
+                    msg = JSON.stringify(body);
+                }
+            } catch(e) {}
+            err.textContent = `❌ ${res.status}: ${msg}`;
             err.classList.remove('hidden');
         }
     } catch(e) {
