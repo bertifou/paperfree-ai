@@ -584,7 +584,13 @@
 
 <script>
 const API_URL = 'http://localhost:8000';
-let authHeader = localStorage.getItem('paperfree_auth');
+// Migration Basic→JWT : on vide les anciens tokens Basic Auth stockés
+(function() {
+    const stored = localStorage.getItem('paperfree_auth');
+    if (stored && stored.startsWith('Basic ')) { localStorage.removeItem('paperfree_auth'); }
+})();
+let authHeader = localStorage.getItem('paperfree_auth'); // format: "Bearer <jwt>"
+let refreshToken = localStorage.getItem('paperfree_refresh');
 let currentDocId = null;
 let allDocs = [];
 
@@ -633,7 +639,11 @@ async function handleSetup() {
     const pass = document.getElementById('setupPass').value;
     const url  = document.getElementById('setupLlm').value;
     try {
-        const res = await fetch(`${API_URL}/setup?username=${encodeURIComponent(user)}&password=${encodeURIComponent(pass)}&llm_url=${encodeURIComponent(url)}`, { method: 'POST' });
+        const res = await fetch(`${API_URL}/setup`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass, llm_url: url })
+        });
         if (res.ok) { showSection('login'); }
         else {
             const err = document.getElementById('setupError');
@@ -652,22 +662,42 @@ async function handleSetup() {
 async function handleLogin() {
     const user = document.getElementById('loginUser').value;
     const pass = document.getElementById('loginPass').value;
-    authHeader = 'Basic ' + btoa(user + ':' + pass);
-    const res = await fetch(`${API_URL}/documents`, { headers: { 'Authorization': authHeader } });
-    if (res.status === 401) {
-        document.getElementById('loginError').classList.remove('hidden');
-        authHeader = null;
-    } else {
-        localStorage.setItem('paperfree_auth', authHeader);
+    const errEl = document.getElementById('loginError');
+    errEl.classList.add('hidden');
+    try {
+        const res = await fetch(`${API_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass })
+        });
+        if (!res.ok) {
+            let msg = 'Identifiants incorrects';
+            try { const body = await res.json(); msg = body.detail || msg; } catch(e) {}
+            errEl.textContent = msg;
+            errEl.classList.remove('hidden');
+            authHeader = null;
+            return;
+        }
+        const data = await res.json();
+        authHeader   = 'Bearer ' + data.access_token;
+        refreshToken = data.refresh_token;
+        localStorage.setItem('paperfree_auth',    authHeader);
+        localStorage.setItem('paperfree_refresh', refreshToken);
         showSection('app');
         loadDocuments();
         loadSettings();
+    } catch(e) {
+        errEl.textContent = '⚠️ Erreur réseau : ' + e.message;
+        errEl.classList.remove('hidden');
+        authHeader = null;
     }
 }
 
 function logout() {
     localStorage.removeItem('paperfree_auth');
-    authHeader = null;
+    localStorage.removeItem('paperfree_refresh');
+    authHeader   = null;
+    refreshToken = null;
     checkStatus();
 }
 
