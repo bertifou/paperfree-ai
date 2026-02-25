@@ -7,6 +7,7 @@ import tempfile
 import shutil
 import pytesseract
 from PIL import Image
+from enhance import enhance_image
 import PyPDF2
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -146,20 +147,22 @@ def generate_text_pdf(
 
 def _generate_searchable_pdf(image_path: str, output_dir: str, base_name: str) -> str | None:
     """
-    Utilise Tesseract en mode sortie PDF pour produire un document avec :
-    - L'image originale préservée en fond
+    Améliore l'image (deskew, déperspective, contraste, débruitage) puis
+    utilise Tesseract en mode sortie PDF pour produire un document avec :
+    - L'image améliorée en fond (visuellement fidèle au document)
     - Le texte OCR superposé de façon invisible (sélectionnable, cherchable)
-    C'est exactement le comportement des scanners professionnels.
     """
     try:
-        # Tesseract écrit {output_base}.pdf — on travaille dans un dossier temp
-        # pour éviter les collisions, puis on déplace le résultat.
+        # Prétraitement : image améliorée dans un dossier temporaire
+        enhanced_path = enhance_image(image_path, output_dir=None)
+        cleanup_enhanced = (enhanced_path != image_path)
+
         with tempfile.TemporaryDirectory() as tmp:
             tmp_base = os.path.join(tmp, "out")
             subprocess.run(
                 [
                     "tesseract",
-                    image_path,
+                    enhanced_path,
                     tmp_base,
                     "-l", "fra+eng",
                     "--dpi", "300",
@@ -174,6 +177,10 @@ def _generate_searchable_pdf(image_path: str, output_dir: str, base_name: str) -
 
             dest = os.path.join(output_dir, base_name + "_scan.pdf")
             shutil.move(tmp_pdf, dest)
+
+        # Nettoyage de l'image intermédiaire si elle a été créée
+        if cleanup_enhanced and os.path.exists(enhanced_path):
+            os.remove(enhanced_path)
 
         logger.info(f"[pdf-scan] PDF searchable généré : {dest}")
         return dest
@@ -473,7 +480,7 @@ def analyze_with_llm(text: str, config: dict | None = None) -> dict:
 
 def process_document(file_path: str) -> tuple[str, dict]:
     """
-    Pipeline complet : OCR → correction LLM → analyse structurée.
+    Pipeline complet : (enhance →) OCR → correction LLM → analyse structurée.
     Si vision activée et fichier image → bypass OCR, analyse directe par vision.
     Retourne (texte_brut_ou_corrigé, analyse_dict).
     """
@@ -481,39 +488,52 @@ def process_document(file_path: str) -> tuple[str, dict]:
     ext = os.path.splitext(file_path)[1].lower()
     is_image = ext in (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp")
 
-    # ── Chemin vision (image + vision activée) ──────────────────────────────
-    if is_image and config.get("vision_enabled"):
-        logger.info("[processor] Mode VISION activé")
-        vision_result = analyze_with_vision(file_path, config)
-        # Le texte extrait par vision sert de contenu OCR stocké en DB
-        extracted_text = vision_result.pop("extracted_text", "") or ""
-        # Si le texte extrait est substantiel, on l'enrichit avec une passe OCR aussi
-        if not extracted_text:
-            ocr_text, _ = extract_text_with_confidence(file_path)
-            extracted_text = ocr_text
-        return extracted_text, vision_result
-
-    # ── Chemin OCR + correction LLM + analyse ──────────────────────────────
+    # ── Prétraitement image ─────────────────────────────────────────────────
+    # On améliore l'image avant tout traitement (OCR ou vision).
+    # L'image enhanced est temporaire : file_path original reste inchangé.
+    enhanced_path = file_path
+    cleanup_enhanced = False
     if is_image:
-        ocr_text, confidence = extract_text_with_confidence(file_path)
-        logger.info(f"[processor] OCR confiance={confidence:.1f}%")
-        # Correction LLM si texte non vide
-        if ocr_text.strip():
-            # Si un provider vision est configuré, on passe aussi l'image pour meilleure correction
-            if config.get("vision_enabled") and config.get("vision_provider"):
-                corrected_text = correct_ocr_with_vision(file_path, ocr_text, confidence, config)
+        enhanced_path = enhance_image(file_path, output_dir=None)
+        cleanup_enhanced = (enhanced_path != file_path)
+        if cleanup_enhanced:
+            logger.info(f"[processor] Image améliorée : {os.path.basename(enhanced_path)}")
+
+    try:
+        # ── Chemin vision (image + vision activée) ──────────────────────────
+        if is_image and config.get("vision_enabled"):
+            logger.info("[processor] Mode VISION activé")
+            vision_result = analyze_with_vision(enhanced_path, config)
+            extracted_text = vision_result.pop("extracted_text", "") or ""
+            if not extracted_text:
+                ocr_text, _ = extract_text_with_confidence(enhanced_path)
+                extracted_text = ocr_text
+            return extracted_text, vision_result
+
+        # ── Chemin OCR + correction LLM + analyse ───────────────────────────
+        if is_image:
+            ocr_text, confidence = extract_text_with_confidence(enhanced_path)
+            logger.info(f"[processor] OCR confiance={confidence:.1f}%")
+            if ocr_text.strip():
+                if config.get("vision_enabled") and config.get("vision_provider"):
+                    corrected_text = correct_ocr_with_vision(enhanced_path, ocr_text, confidence, config)
+                else:
+                    corrected_text = correct_ocr_with_llm(ocr_text, confidence, config)
             else:
-                corrected_text = correct_ocr_with_llm(ocr_text, confidence, config)
+                corrected_text = ocr_text
         else:
-            corrected_text = ocr_text
-    else:
-        # PDF — extraction native, pas d'OCR Tesseract nécessaire
-        corrected_text = _extract_pdf_text(file_path)
-        confidence = 100.0
+            corrected_text = _extract_pdf_text(file_path)
+            confidence = 100.0
 
-    analysis = analyze_with_llm(corrected_text, config)
-    # Stocker le score OCR dans le résumé si confiance basse (debug utile)
-    if confidence < 60 and is_image:
-        analysis["ocr_confidence"] = round(confidence, 1)
+        analysis = analyze_with_llm(corrected_text, config)
+        if confidence < 60 and is_image:
+            analysis["ocr_confidence"] = round(confidence, 1)
+        return corrected_text, analysis
 
-    return corrected_text, analysis
+    finally:
+        # Nettoyage de l'image améliorée temporaire
+        if cleanup_enhanced and os.path.exists(enhanced_path):
+            try:
+                os.remove(enhanced_path)
+            except OSError:
+                pass
