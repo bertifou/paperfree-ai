@@ -375,7 +375,7 @@ def _run_processing(doc_id: int, file_path: str):
             doc.amount   = analysis.get("amount")
             doc.issuer   = analysis.get("issuer")
 
-            # Générer un PDF typographique si le fichier source est une image
+            # Générer un PDF searchable si le fichier source est une image
             ext = os.path.splitext(file_path)[1].lower()
             if ext in (".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp"):
                 base_name = os.path.splitext(os.path.basename(file_path))[0]
@@ -386,7 +386,10 @@ def _run_processing(doc_id: int, file_path: str):
                     "amount":   doc.amount,
                     "issuer":   doc.issuer,
                 }
-                pdf_path = generate_text_pdf(text, UPLOAD_DIR, base_name, meta)
+                pdf_path = generate_text_pdf(
+                    text, UPLOAD_DIR, base_name, meta,
+                    image_path=file_path,   # ← image originale pour Tesseract PDF
+                )
                 if pdf_path:
                     doc.pdf_filename = os.path.basename(pdf_path)
 

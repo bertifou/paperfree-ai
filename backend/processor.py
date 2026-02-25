@@ -2,6 +2,9 @@ import os
 import json
 import base64
 import logging
+import subprocess
+import tempfile
+import shutil
 import pytesseract
 from PIL import Image
 import PyPDF2
@@ -118,7 +121,7 @@ def get_llm_config() -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Génération PDF typographique (texte OCR → vrai PDF mise en page)
+# Génération PDF avec image originale + texte OCR invisible (Tesseract natif)
 # ---------------------------------------------------------------------------
 
 def generate_text_pdf(
@@ -126,172 +129,102 @@ def generate_text_pdf(
     output_dir: str,
     base_name: str,
     meta: dict | None = None,
+    image_path: str | None = None,
 ) -> str | None:
     """
-    Génère un PDF propre et lisible à partir du texte extrait (OCR/LLM).
-    Utilise ReportLab pour une vraie mise en page typographique.
-    meta peut contenir : category, summary, date, amount, issuer.
+    Génère un PDF avec :
+    - Si image_path fourni : image originale en arrière-plan + texte OCR invisible
+      par-dessus (rendu par Tesseract en mode pdf). Visuellement identique au document,
+      mais texte sélectionnable/cherchable.
+    - Sinon : fallback PDF typographique ReportLab avec le texte seulement.
     Retourne le chemin du PDF généré, ou None en cas d'erreur.
     """
+    if image_path and os.path.exists(image_path):
+        return _generate_searchable_pdf(image_path, output_dir, base_name)
+    return _generate_text_only_pdf(text, output_dir, base_name, meta)
+
+
+def _generate_searchable_pdf(image_path: str, output_dir: str, base_name: str) -> str | None:
+    """
+    Utilise Tesseract en mode sortie PDF pour produire un document avec :
+    - L'image originale préservée en fond
+    - Le texte OCR superposé de façon invisible (sélectionnable, cherchable)
+    C'est exactement le comportement des scanners professionnels.
+    """
+    try:
+        # Tesseract écrit {output_base}.pdf — on travaille dans un dossier temp
+        # pour éviter les collisions, puis on déplace le résultat.
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp_base = os.path.join(tmp, "out")
+            subprocess.run(
+                [
+                    "tesseract",
+                    image_path,
+                    tmp_base,
+                    "-l", "fra+eng",
+                    "--dpi", "300",
+                    "pdf",
+                ],
+                check=True,
+                capture_output=True,
+            )
+            tmp_pdf = tmp_base + ".pdf"
+            if not os.path.exists(tmp_pdf):
+                raise FileNotFoundError("Tesseract n'a pas produit de PDF")
+
+            dest = os.path.join(output_dir, base_name + "_scan.pdf")
+            shutil.move(tmp_pdf, dest)
+
+        logger.info(f"[pdf-scan] PDF searchable généré : {dest}")
+        return dest
+
+    except subprocess.CalledProcessError as e:
+        logger.error(f"[pdf-scan] Tesseract erreur : {e.stderr.decode()}")
+        return None
+    except Exception as e:
+        logger.error(f"[pdf-scan] Erreur : {e}")
+        return None
+
+
+def _generate_text_only_pdf(
+    text: str, output_dir: str, base_name: str, meta: dict | None
+) -> str | None:
+    """Fallback : PDF typographique ReportLab si pas d'image disponible."""
     try:
         from reportlab.lib.pagesizes import A4
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import cm
         from reportlab.lib import colors
-        from reportlab.platypus import (
-            SimpleDocTemplate, Paragraph, Spacer, HRFlowable, Table, TableStyle
-        )
-        from reportlab.lib.enums import TA_LEFT, TA_CENTER
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, HRFlowable
+        from reportlab.lib.enums import TA_CENTER
         import datetime as dt
 
-        pdf_name = base_name + "_ocr.pdf"
-        pdf_path = os.path.join(output_dir, pdf_name)
+        pdf_path = os.path.join(output_dir, base_name + "_ocr.pdf")
         meta = meta or {}
-
-        doc = SimpleDocTemplate(
-            pdf_path,
-            pagesize=A4,
-            leftMargin=2.5 * cm,
-            rightMargin=2.5 * cm,
-            topMargin=2.5 * cm,
-            bottomMargin=2.5 * cm,
-        )
-
+        doc = SimpleDocTemplate(pdf_path, pagesize=A4,
+                                leftMargin=2.5*cm, rightMargin=2.5*cm,
+                                topMargin=2.5*cm, bottomMargin=2.5*cm)
         styles = getSampleStyleSheet()
-
-        # ── Styles personnalisés ──
-        title_style = ParagraphStyle(
-            "DocTitle",
-            parent=styles["Heading1"],
-            fontSize=16,
-            textColor=colors.HexColor("#1e3a5f"),
-            spaceAfter=4,
-        )
-        meta_label_style = ParagraphStyle(
-            "MetaLabel",
-            parent=styles["Normal"],
-            fontSize=8,
-            textColor=colors.HexColor("#6b7280"),
-            spaceBefore=0,
-            spaceAfter=0,
-        )
-        meta_value_style = ParagraphStyle(
-            "MetaValue",
-            parent=styles["Normal"],
-            fontSize=9,
-            textColor=colors.HexColor("#111827"),
-            fontName="Helvetica-Bold",
-            spaceBefore=0,
-            spaceAfter=0,
-        )
-        body_style = ParagraphStyle(
-            "Body",
-            parent=styles["Normal"],
-            fontSize=10,
-            leading=15,
-            textColor=colors.HexColor("#1f2937"),
-            spaceAfter=6,
-        )
-        footer_style = ParagraphStyle(
-            "Footer",
-            parent=styles["Normal"],
-            fontSize=7,
-            textColor=colors.HexColor("#9ca3af"),
-            alignment=TA_CENTER,
-        )
-
+        body = ParagraphStyle("Body", parent=styles["Normal"],
+                              fontSize=10, leading=15,
+                              textColor=colors.HexColor("#1f2937"), spaceAfter=6)
         story = []
-
-        # ── En-tête ──
-        category = meta.get("category") or "Document"
-        story.append(Paragraph(f"📄 {category}", title_style))
-
-        summary = meta.get("summary") or ""
-        if summary:
-            story.append(Paragraph(summary, ParagraphStyle(
-                "Summary", parent=styles["Normal"],
-                fontSize=10, textColor=colors.HexColor("#4b5563"), spaceAfter=10,
-                fontName="Helvetica-Oblique",
-            )))
-
-        # ── Bande de métadonnées ──
-        meta_fields = []
-        if meta.get("date"):
-            meta_fields.append([
-                Paragraph("DATE", meta_label_style),
-                Paragraph(meta["date"], meta_value_style),
-            ])
-        if meta.get("issuer"):
-            meta_fields.append([
-                Paragraph("ÉMETTEUR", meta_label_style),
-                Paragraph(meta["issuer"], meta_value_style),
-            ])
-        if meta.get("amount"):
-            meta_fields.append([
-                Paragraph("MONTANT", meta_label_style),
-                Paragraph(meta["amount"], meta_value_style),
-            ])
-
-        if meta_fields:
-            col_w = (A4[0] - 5 * cm) / len(meta_fields)
-            tbl = Table(
-                [
-                    [f[0] for f in meta_fields],
-                    [f[1] for f in meta_fields],
-                ],
-                colWidths=[col_w] * len(meta_fields),
-            )
-            tbl.setStyle(TableStyle([
-                ("BACKGROUND",  (0, 0), (-1, -1), colors.HexColor("#f3f4f6")),
-                ("ROUNDEDCORNERS", [6]),
-                ("TOPPADDING",  (0, 0), (-1, -1), 6),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-                ("LEFTPADDING",  (0, 0), (-1, -1), 10),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-                ("LINEBELOW",   (0, 0), (-1, 0), 0.5, colors.HexColor("#e5e7eb")),
-            ]))
-            story.append(tbl)
-            story.append(Spacer(1, 0.5 * cm))
-
-        story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#e5e7eb")))
-        story.append(Spacer(1, 0.4 * cm))
-
-        # ── Corps du texte ──
-        if text and text.strip():
-            for line in text.splitlines():
-                line = line.strip()
-                if not line:
-                    story.append(Spacer(1, 0.2 * cm))
-                else:
-                    # Échapper les caractères spéciaux XML/HTML pour ReportLab
-                    safe = (line
-                            .replace("&", "&amp;")
-                            .replace("<", "&lt;")
-                            .replace(">", "&gt;"))
-                    story.append(Paragraph(safe, body_style))
-        else:
-            story.append(Paragraph(
-                "<i>Aucun texte extrait pour ce document.</i>",
-                ParagraphStyle("Empty", parent=styles["Normal"],
-                               fontSize=10, textColor=colors.HexColor("#9ca3af")),
-            ))
-
-        # ── Pied de page ──
-        story.append(Spacer(1, 0.6 * cm))
-        story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#e5e7eb")))
-        story.append(Spacer(1, 0.2 * cm))
-        generated = dt.datetime.now().strftime("%Y-%m-%d %H:%M")
-        story.append(Paragraph(
-            f"Document généré par PaperFree-AI · {generated}",
-            footer_style,
-        ))
-
+        if meta.get("category"):
+            story.append(Paragraph(meta["category"], styles["Heading1"]))
+        if meta.get("summary"):
+            story.append(Paragraph(f"<i>{meta['summary']}</i>", styles["Normal"]))
+            story.append(Spacer(1, 0.4*cm))
+        story.append(HRFlowable(width="100%", thickness=1,
+                                color=colors.HexColor("#e5e7eb")))
+        story.append(Spacer(1, 0.3*cm))
+        for line in (text or "").splitlines():
+            safe = line.strip().replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+            story.append(Paragraph(safe, body) if safe else Spacer(1, 0.2*cm))
         doc.build(story)
-        logger.info(f"[pdf-gen] PDF typographique généré : {pdf_path}")
+        logger.info(f"[pdf-text] PDF texte généré : {pdf_path}")
         return pdf_path
-
     except Exception as e:
-        logger.error(f"[pdf-gen] Erreur ReportLab : {e}")
+        logger.error(f"[pdf-text] Erreur : {e}")
         return None
 
 
