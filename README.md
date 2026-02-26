@@ -1,6 +1,6 @@
 # PaperFree-AI 📄🚀
 
-Une solution open-source pour la gestion intelligente de documents, inspirée par Immich.
+Une solution open-source pour la gestion intelligente de documents.
 Tout tourne en local : OCR, LLM, stockage.
 
 ## 🌟 Vision
@@ -59,14 +59,35 @@ La config peut aussi être modifiée à chaud depuis l'interface web (onglet Par
 ```
 paperfree-ai/
 ├── backend/
-│   ├── main.py          # API FastAPI
-│   ├── processor.py     # OCR + analyse LLM
-│   ├── database.py      # Modèles SQLAlchemy
-│   ├── email_monitor.py # Surveillance boîte mail
+│   ├── api/
+│   │   ├── auth.py          # Authentification JWT
+│   │   ├── documents.py     # CRUD documents
+│   │   ├── email.py         # Endpoints email
+│   │   ├── oauth.py         # OAuth Google / Microsoft
+│   │   └── settings.py      # Paramètres LLM
+│   ├── core/
+│   │   ├── config.py        # Configuration globale
+│   │   ├── middleware.py    # Rate limiting, headers sécurité
+│   │   ├── security.py      # JWT, hachage
+│   │   └── validators.py    # Validation uploads
+│   ├── services/
+│   │   ├── processing.py    # Pipeline OCR + LLM
+│   │   └── watcher.py       # Surveillance dossier
+│   ├── main.py              # Entrée FastAPI
+│   ├── processor.py         # OCR + analyse LLM
+│   ├── database.py          # Modèles SQLAlchemy
+│   ├── email_monitor.py     # Surveillance boîte mail
 │   ├── requirements.txt
 │   └── Dockerfile
 ├── frontend/
-│   └── index.html
+│   ├── index.html
+│   └── js/
+│       ├── auth.js          # Gestion authentification
+│       ├── classeur.js      # Vue classeur
+│       ├── documents.js     # Gestion documents
+│       ├── email.js         # Interface email
+│       ├── settings.js      # Interface paramètres
+│       └── utils.js         # Utilitaires communs
 ├── docker-compose.yml
 └── .env.example
 ```
@@ -123,4 +144,3 @@ Image uploadée ─────┤                                              
 | OCR + correction LLM | Meilleure qualité, 100% local | Requête LLM supplémentaire |
 | Vision locale (llava…) | Excellent sur manuscrits/tampons, local | Modèle vision requis, plus lent |
 | Vision OpenAI/Anthropic | Qualité maximale | Données envoyées dans le cloud |
-
