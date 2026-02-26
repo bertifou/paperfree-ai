@@ -44,16 +44,23 @@ class Setting(Base):
 
 
 class ClassificationRule(Base):
-    """Règles personnalisées pour reclassifier les documents après l'analyse LLM."""
+    """Règle de reclassification : une règle possède N conditions (toutes requises — AND)."""
     __tablename__ = "classification_rules"
-    id             = Column(Integer, primary_key=True, index=True)
-    name           = Column(String, nullable=False)          # Nom lisible de la règle
-    match_field    = Column(String, nullable=False)          # 'issuer' | 'content' | 'filename' | 'category'
-    match_value    = Column(String, nullable=False)          # Valeur à chercher (insensible à la casse)
-    target_category = Column(String, nullable=False)         # Catégorie cible
-    priority       = Column(Integer, default=0)              # Plus grand = prioritaire
-    enabled        = Column(String, default="true")          # 'true' | 'false'
-    created_at     = Column(DateTime, default=datetime.datetime.utcnow)
+    id              = Column(Integer, primary_key=True, index=True)
+    name            = Column(String, nullable=False)   # Nom lisible
+    target_category = Column(String, nullable=False)   # Catégorie cible
+    priority        = Column(Integer, default=0)       # Plus grand = prioritaire
+    enabled         = Column(String, default="true")   # 'true' | 'false'
+    created_at      = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class RuleCondition(Base):
+    """Condition individuelle attachée à une ClassificationRule."""
+    __tablename__ = "rule_conditions"
+    id          = Column(Integer, primary_key=True, index=True)
+    rule_id     = Column(Integer, nullable=False)      # FK → ClassificationRule.id
+    match_field = Column(String, nullable=False)       # 'issuer'|'content'|'category'|'amount_not_null'
+    match_value = Column(String, nullable=True)        # null pour les conditions sans valeur
 
 
 class EmailLog(Base):
@@ -84,26 +91,47 @@ def _run_migrations():
     if "pipeline_sources" not in existing_cols:
         cur.execute("ALTER TABLE documents ADD COLUMN pipeline_sources TEXT")
         conn.commit()
-    # Migration : table classification_rules
+    # Migration : tables classification_rules + rule_conditions
     cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='classification_rules'")
-    if not cur.fetchone():
+    rules_exists = cur.fetchone()
+    if not rules_exists:
         cur.execute("""
             CREATE TABLE classification_rules (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 name TEXT NOT NULL,
-                match_field TEXT NOT NULL,
-                match_value TEXT NOT NULL,
                 target_category TEXT NOT NULL,
                 priority INTEGER DEFAULT 0,
                 enabled TEXT DEFAULT 'true',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        # Règle d'exemple : pharmacie → Impôts
+        conn.commit()
+    else:
+        # Nettoyer les anciennes colonnes monolithiques si présentes (migration v1→v2)
+        cur.execute("PRAGMA table_info(classification_rules)")
+        cols = {row[1] for row in cur.fetchall()}
+        # Rien à supprimer en SQLite (pas de DROP COLUMN avant 3.35), on ignore
+
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='rule_conditions'")
+    if not cur.fetchone():
         cur.execute("""
-            INSERT INTO classification_rules (name, match_field, match_value, target_category, priority)
-            VALUES ('Pharmacie → Impôts', 'issuer', 'pharmacie', 'Impôts', 10)
+            CREATE TABLE rule_conditions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                rule_id INTEGER NOT NULL,
+                match_field TEXT NOT NULL,
+                match_value TEXT
+            )
         """)
+        # Règle d'exemple : Pharmacie → Impôts (catégorie LLM=Santé ET montant non nul)
+        cur.execute("""
+            INSERT INTO classification_rules (name, target_category, priority)
+            VALUES ('Pharmacie → Impôts', 'Impôts', 10)
+        """)
+        rule_id = cur.lastrowid
+        cur.execute("INSERT INTO rule_conditions (rule_id, match_field, match_value) VALUES (?, ?, ?)",
+                    (rule_id, 'issuer', 'pharmacie'))
+        cur.execute("INSERT INTO rule_conditions (rule_id, match_field, match_value) VALUES (?, ?, ?)",
+                    (rule_id, 'amount_not_null', None))
         conn.commit()
     conn.close()
 

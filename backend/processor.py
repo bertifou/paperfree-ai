@@ -454,9 +454,9 @@ def _merge_analyses(vision_json: dict, ocr_json: dict) -> dict:
 # ---------------------------------------------------------------------------
 
 def apply_classification_rules(analysis: dict, text: str = "") -> dict:
-    """Applique les règles de reclassification personnalisées après l'analyse LLM."""
+    """Applique les règles de reclassification personnalisées (conditions AND) après l'analyse LLM."""
     try:
-        from database import SessionLocal, ClassificationRule
+        from database import SessionLocal, ClassificationRule, RuleCondition
         db = SessionLocal()
         rules = (
             db.query(ClassificationRule)
@@ -464,29 +464,44 @@ def apply_classification_rules(analysis: dict, text: str = "") -> dict:
             .order_by(ClassificationRule.priority.desc())
             .all()
         )
-        db.close()
 
         for rule in rules:
-            field = rule.match_field
-            value = rule.match_value.lower().strip()
-
-            if field == "issuer":
-                haystack = (analysis.get("issuer") or "").lower()
-            elif field == "category":
-                haystack = (analysis.get("category") or "").lower()
-            elif field == "content":
-                haystack = text.lower()
-            else:
+            conditions = db.query(RuleCondition).filter(RuleCondition.rule_id == rule.id).all()
+            if not conditions:
                 continue
 
-            if value in haystack:
+            all_match = True
+            for cond in conditions:
+                field = cond.match_field
+                value = (cond.match_value or "").lower().strip()
+
+                if field == "issuer":
+                    haystack = (analysis.get("issuer") or "").lower()
+                    if value not in haystack:
+                        all_match = False; break
+                elif field == "category":
+                    haystack = (analysis.get("category") or "").lower()
+                    if value not in haystack:
+                        all_match = False; break
+                elif field == "content":
+                    if value not in text.lower():
+                        all_match = False; break
+                elif field == "amount_not_null":
+                    if not analysis.get("amount"):
+                        all_match = False; break
+                elif field == "amount_null":
+                    if analysis.get("amount"):
+                        all_match = False; break
+                else:
+                    continue
+
+            if all_match:
                 original = analysis.get("category")
                 analysis["category"] = rule.target_category
-                logger.info(
-                    f"[rules] Règle '{rule.name}' appliquée : {original} → {rule.target_category}"
-                )
-                break  # La règle de priorité la plus haute gagne
+                logger.info(f"[rules] Règle '{rule.name}' appliquée : {original} → {rule.target_category}")
+                break  # La règle prioritaire gagne
 
+        db.close()
     except Exception as e:
         logger.warning(f"[rules] Erreur lors de l'application des règles : {e}")
 

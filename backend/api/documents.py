@@ -285,68 +285,95 @@ def search_documents(
 
     return {"mode": "llm", "results": results, "llm_answer": llm_answer}
 
+
 # ---------------------------------------------------------------------------
-# Règles de classification personnalisées
+# Règles de classification personnalisées (multi-conditions AND)
 # ---------------------------------------------------------------------------
+
+class ConditionIn(BaseModel):
+    match_field: str   # 'issuer' | 'content' | 'category' | 'amount_not_null' | 'amount_null'
+    match_value: str | None = None
 
 class RuleCreate(BaseModel):
     name: str
-    match_field: str   # 'issuer' | 'content' | 'category'
-    match_value: str
     target_category: str
     priority: int = 0
     enabled: str = "true"
+    conditions: list[ConditionIn] = []
 
 class RuleUpdate(BaseModel):
     name: str | None = None
-    match_field: str | None = None
-    match_value: str | None = None
     target_category: str | None = None
     priority: int | None = None
     enabled: str | None = None
+    conditions: list[ConditionIn] | None = None
+
+
+def _rule_to_dict(r, conditions):
+    return {
+        "id": r.id, "name": r.name,
+        "target_category": r.target_category,
+        "priority": r.priority, "enabled": r.enabled,
+        "conditions": [{"id": c.id, "match_field": c.match_field, "match_value": c.match_value}
+                       for c in conditions],
+    }
+
 
 @router.get("/rules")
 @limiter.limit("60/minute")
 def list_rules(request: Request, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    from database import ClassificationRule
+    from database import ClassificationRule, RuleCondition
     rules = db.query(ClassificationRule).order_by(ClassificationRule.priority.desc()).all()
-    return [
-        {"id": r.id, "name": r.name, "match_field": r.match_field,
-         "match_value": r.match_value, "target_category": r.target_category,
-         "priority": r.priority, "enabled": r.enabled}
-        for r in rules
-    ]
+    result = []
+    for r in rules:
+        conds = db.query(RuleCondition).filter(RuleCondition.rule_id == r.id).all()
+        result.append(_rule_to_dict(r, conds))
+    return result
+
 
 @router.post("/rules", status_code=201)
 @limiter.limit("30/minute")
 def create_rule(request: Request, rule: RuleCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    from database import ClassificationRule
-    r = ClassificationRule(**rule.dict())
+    from database import ClassificationRule, RuleCondition
+    r = ClassificationRule(name=rule.name, target_category=rule.target_category,
+                           priority=rule.priority, enabled=rule.enabled)
     db.add(r)
     db.commit()
     db.refresh(r)
+    for cond in rule.conditions:
+        db.add(RuleCondition(rule_id=r.id, match_field=cond.match_field, match_value=cond.match_value))
+    db.commit()
+    conds = db.query(RuleCondition).filter(RuleCondition.rule_id == r.id).all()
     log_security_event("RULE_CREATED", {"rule_id": r.id, "name": r.name, "user": current_user.username}, request)
-    return {"id": r.id, "message": "Règle créée"}
+    return _rule_to_dict(r, conds)
+
 
 @router.put("/rules/{rule_id}")
 @limiter.limit("30/minute")
 def update_rule(request: Request, rule_id: int, data: RuleUpdate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    from database import ClassificationRule
+    from database import ClassificationRule, RuleCondition
     r = db.query(ClassificationRule).filter(ClassificationRule.id == rule_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Règle introuvable")
-    for field, value in data.dict(exclude_none=True).items():
+    for field, value in data.dict(exclude={"conditions"}, exclude_none=True).items():
         setattr(r, field, value)
+    if data.conditions is not None:
+        db.query(RuleCondition).filter(RuleCondition.rule_id == rule_id).delete()
+        for cond in data.conditions:
+            db.add(RuleCondition(rule_id=rule_id, match_field=cond.match_field, match_value=cond.match_value))
     db.commit()
-    return {"message": "Règle mise à jour"}
+    conds = db.query(RuleCondition).filter(RuleCondition.rule_id == rule_id).all()
+    return _rule_to_dict(r, conds)
+
 
 @router.delete("/rules/{rule_id}")
 @limiter.limit("30/minute")
 def delete_rule(request: Request, rule_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    from database import ClassificationRule
+    from database import ClassificationRule, RuleCondition
     r = db.query(ClassificationRule).filter(ClassificationRule.id == rule_id).first()
     if not r:
         raise HTTPException(status_code=404, detail="Règle introuvable")
+    db.query(RuleCondition).filter(RuleCondition.rule_id == rule_id).delete()
     db.delete(r)
     db.commit()
     log_security_event("RULE_DELETED", {"rule_id": rule_id, "user": current_user.username}, request)
