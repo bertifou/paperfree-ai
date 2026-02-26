@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang='fr'>
 <head>
     <meta charset='UTF-8'>
@@ -12,7 +12,7 @@
         #pdfViewer { width: 100%; height: 500px; border: none; }
         .meta-badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
 
-        /* ── Classeur accordéon ── */
+        /* â”€â”€ Classeur accordÃ©on â”€â”€ */
         .accordion-header {
             display: flex; align-items: center; justify-content: space-between;
             padding: 14px 18px; cursor: pointer; user-select: none;
@@ -40,7 +40,7 @@
 
     <!-- SETUP -->
     <div id='setupSection' class='hidden max-w-md mx-auto bg-white rounded-xl shadow-md p-6 mt-10'>
-        <h1 class='text-2xl font-bold mb-1'>📄 PaperFree-AI</h1>
+        <h1 class='text-2xl font-bold mb-1'>ðŸ“„ PaperFree-AI</h1>
         <p class='text-gray-500 text-sm mb-4'>Configuration initiale</p>
         <div class='space-y-3'>
             <input type='text' id='setupUser' placeholder="Nom d'utilisateur" class='w-full p-2 border rounded'>
@@ -53,7 +53,7 @@
 
     <!-- LOGIN -->
     <div id='loginSection' class='hidden max-w-md mx-auto bg-white rounded-xl shadow-md p-6 mt-10'>
-        <h1 class='text-2xl font-bold mb-1'>📄 PaperFree-AI</h1>
+        <h1 class='text-2xl font-bold mb-1'>ðŸ“„ PaperFree-AI</h1>
         <p class='text-gray-500 text-sm mb-4'>Connexion</p>
         <div class='space-y-3'>
             <input type='text' id='loginUser' placeholder='Utilisateur' class='w-full p-2 border rounded'>
@@ -68,13 +68,13 @@
 
         <!-- HEADER -->
         <div class='bg-white rounded-xl shadow-sm p-4 mb-4 flex items-center justify-between'>
-            <h1 class='text-xl font-bold text-gray-800'>📄 PaperFree-AI</h1>
+            <h1 class='text-xl font-bold text-gray-800'>ðŸ“„ PaperFree-AI</h1>
             <div class='flex gap-3'>
                 <button onclick='showTab("docs")'     id='btnDocs'     class='text-sm px-3 py-1 rounded tab-active'>Documents</button>
-                <button onclick='showTab("classeur")' id='btnClasseur' class='text-sm px-3 py-1 rounded text-gray-500'>🗂 Classeur</button>
-                <button onclick='showTab("email")'    id='btnEmail'    class='text-sm px-3 py-1 rounded text-gray-500'>📧 Emails</button>
-                <button onclick='showTab("settings")' id='btnSettings' class='text-sm px-3 py-1 rounded text-gray-500'>Paramètres</button>
-                <button onclick='logout()' class='text-sm text-red-400 hover:text-red-600'>Déconnexion</button>
+                <button onclick='showTab("classeur")' id='btnClasseur' class='text-sm px-3 py-1 rounded text-gray-500'>ðŸ—‚ Classeur</button>
+                <button onclick='showTab("email")'    id='btnEmail'    class='text-sm px-3 py-1 rounded text-gray-500'>ðŸ“§ Emails</button>
+                <button onclick='showTab("settings")' id='btnSettings' class='text-sm px-3 py-1 rounded text-gray-500'>ParamÃ¨tres</button>
+                <button onclick='logout()' class='text-sm text-red-400 hover:text-red-600'>DÃ©connexion</button>
             </div>
         </div>
 
@@ -91,43 +91,43 @@
                     <div class='grid grid-cols-2 gap-2 mb-2'>
                         <button onclick='triggerCapture("camera")'
                             class='bg-blue-500 text-white py-2 px-3 rounded-lg hover:bg-blue-600 text-sm font-medium'>
-                            📷 Caméra
+                            ðŸ“· CamÃ©ra
                         </button>
                         <button onclick='triggerCapture("file")'
                             class='bg-gray-100 text-gray-700 py-2 px-3 rounded-lg hover:bg-gray-200 text-sm font-medium'>
-                            📁 Fichier
+                            ðŸ“ Fichier
                         </button>
                     </div>
 
-                    <!-- Prévisualisation avant upload -->
+                    <!-- PrÃ©visualisation avant upload -->
                     <div id='previewContainer' class='hidden mb-2'>
                         <div class='relative'>
-                            <img id='previewImg' class='w-full rounded-lg border-2 border-blue-200 max-h-48 object-contain bg-gray-50' alt='Prévisualisation'>
-                            <button onclick='cancelPreview()' class='absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs leading-none'>✕</button>
+                            <img id='previewImg' class='w-full rounded-lg border-2 border-blue-200 max-h-48 object-contain bg-gray-50' alt='PrÃ©visualisation'>
+                            <button onclick='cancelPreview()' class='absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs leading-none'>âœ•</button>
                         </div>
                         <div id='qualityTips' class='mt-2 p-2 bg-yellow-50 rounded-lg border border-yellow-200 text-xs text-yellow-800 hidden'>
-                            <p class='font-semibold mb-1'>💡 Conseils pour une meilleure qualité :</p>
+                            <p class='font-semibold mb-1'>ðŸ’¡ Conseils pour une meilleure qualitÃ© :</p>
                             <ul class='space-y-0.5 list-disc list-inside'>
-                                <li>Posez le document à plat sur une surface sombre</li>
-                                <li>Éclairage uniforme, évitez les reflets</li>
+                                <li>Posez le document Ã  plat sur une surface sombre</li>
+                                <li>Ã‰clairage uniforme, Ã©vitez les reflets</li>
                                 <li>Photo bien droite, centrez le document</li>
                             </ul>
                         </div>
                         <div class='flex gap-2 mt-2'>
                             <button onclick='confirmUpload()'
                                 class='flex-1 bg-green-500 text-white py-1.5 rounded-lg hover:bg-green-600 text-sm font-medium'>
-                                ✅ Envoyer
+                                âœ… Envoyer
                             </button>
                             <button onclick='triggerCapture("camera")'
                                 class='bg-gray-100 text-gray-600 py-1.5 px-3 rounded-lg hover:bg-gray-200 text-sm'>
-                                🔄 Reprendre
+                                ðŸ”„ Reprendre
                             </button>
                         </div>
                     </div>
 
                     <div id='uploadStatus' class='hidden'>
                         <div class='flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded-lg'>
-                            <span>⏳ Traitement OCR + IA en cours...</span>
+                            <span>â³ Traitement OCR + IA en cours...</span>
                         </div>
                     </div>
                 </div>
@@ -137,11 +137,11 @@
                     <div class='flex gap-2'>
                         <input type='text' id='searchInput' placeholder='Rechercher...'
                             class='flex-1 p-2 border rounded text-sm' onkeydown='if(event.key==="Enter") doSearch("text")'>
-                        <button onclick='doSearch("text")' class='bg-gray-100 hover:bg-gray-200 px-3 rounded text-sm'>🔍</button>
+                        <button onclick='doSearch("text")' class='bg-gray-100 hover:bg-gray-200 px-3 rounded text-sm'>ðŸ”</button>
                     </div>
                     <button onclick='doSearch("llm")'
                         class='w-full bg-purple-50 hover:bg-purple-100 text-purple-700 py-1.5 px-3 rounded text-sm font-medium border border-purple-200'>
-                        ✨ Demander au LLM
+                        âœ¨ Demander au LLM
                     </button>
                     <div id='llmAnswer' class='hidden bg-purple-50 rounded p-3 text-sm text-purple-900 border border-purple-200'></div>
                 </div>
@@ -153,11 +153,11 @@
                 </div>
             </div>
 
-            <!-- COLONNE DROITE: panneau de détail -->
+            <!-- COLONNE DROITE: panneau de dÃ©tail -->
             <div class='flex-1 bg-white rounded-xl shadow-sm p-4' id='detailPanel'>
                 <div class='flex items-center justify-center h-64 text-gray-300 flex-col gap-2'>
-                    <span class='text-5xl'>📄</span>
-                    <span class='text-sm'>Sélectionnez un document</span>
+                    <span class='text-5xl'>ðŸ“„</span>
+                    <span class='text-sm'>SÃ©lectionnez un document</span>
                 </div>
             </div>
         </div>
@@ -165,12 +165,12 @@
         <!-- TAB CLASSEUR -->
         <div id='tabClasseur' class='hidden flex gap-4'>
 
-            <!-- Colonne gauche : accordéon -->
+            <!-- Colonne gauche : accordÃ©on -->
             <div class='w-96 flex-shrink-0 bg-white rounded-xl shadow-sm overflow-hidden'>
 
-                <!-- En-tête + tri -->
+                <!-- En-tÃªte + tri -->
                 <div class='flex items-center justify-between px-4 py-3 border-b bg-gray-50'>
-                    <h2 class='text-sm font-semibold text-gray-600'>🗂 CLASSEUR</h2>
+                    <h2 class='text-sm font-semibold text-gray-600'>ðŸ—‚ CLASSEUR</h2>
                     <div class='flex items-center gap-2'>
                         <label class='text-xs text-gray-400'>Trier par</label>
                         <select id='classeurSort' onchange='renderClasseur()' class='text-xs border rounded px-2 py-1 bg-white text-gray-600'>
@@ -181,15 +181,15 @@
                     </div>
                 </div>
 
-                <!-- Accordéon généré dynamiquement -->
+                <!-- AccordÃ©on gÃ©nÃ©rÃ© dynamiquement -->
                 <div id='classeurAccordion' class='overflow-y-auto' style='max-height: calc(100vh - 180px)'></div>
             </div>
 
-            <!-- Colonne droite : détail document (même panneau que docs) -->
+            <!-- Colonne droite : dÃ©tail document (mÃªme panneau que docs) -->
             <div class='flex-1 bg-white rounded-xl shadow-sm p-4' id='classeurDetailPanel'>
                 <div class='flex items-center justify-center h-64 text-gray-300 flex-col gap-2'>
-                    <span class='text-5xl'>🗂</span>
-                    <span class='text-sm'>Sélectionnez un document dans le classeur</span>
+                    <span class='text-5xl'>ðŸ—‚</span>
+                    <span class='text-sm'>SÃ©lectionnez un document dans le classeur</span>
                 </div>
             </div>
         </div>
@@ -204,13 +204,13 @@
                     <option value='INBOX'>INBOX</option>
                 </select>
                 <button onclick='loadEmails()'
-                    class='bg-blue-500 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-600'>🔄 Actualiser</button>
+                    class='bg-blue-500 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-600'>ðŸ”„ Actualiser</button>
                 <button onclick='syncAttachments()'
-                    class='bg-green-500 text-white px-4 py-1.5 rounded text-sm hover:bg-green-600'>📎 Sync pièces jointes</button>
+                    class='bg-green-500 text-white px-4 py-1.5 rounded text-sm hover:bg-green-600'>ðŸ“Ž Sync piÃ¨ces jointes</button>
                 <button onclick='purgePromo(false)'
-                    class='bg-orange-500 text-white px-4 py-1.5 rounded text-sm hover:bg-orange-600'>🗑 Purger promotionnels</button>
+                    class='bg-orange-500 text-white px-4 py-1.5 rounded text-sm hover:bg-orange-600'>ðŸ—‘ Purger promotionnels</button>
                 <button onclick='purgePromo(true)'
-                    class='bg-gray-200 text-gray-700 px-4 py-1.5 rounded text-sm hover:bg-gray-300'>👁 Simuler purge</button>
+                    class='bg-gray-200 text-gray-700 px-4 py-1.5 rounded text-sm hover:bg-gray-300'>ðŸ‘ Simuler purge</button>
                 <span id='emailActionMsg' class='text-sm text-green-600 hidden'></span>
             </div>
 
@@ -225,7 +225,7 @@
                     <thead class='bg-gray-50 text-xs text-gray-500 uppercase'>
                         <tr>
                             <th class='px-4 py-2 text-left w-6'></th>
-                            <th class='px-4 py-2 text-left'>Expéditeur</th>
+                            <th class='px-4 py-2 text-left'>ExpÃ©diteur</th>
                             <th class='px-4 py-2 text-left'>Sujet</th>
                             <th class='px-4 py-2 text-left'>Date</th>
                             <th class='px-4 py-2 text-center'>PJ</th>
@@ -249,38 +249,38 @@
         <!-- TAB SETTINGS -->
         <div id='tabSettings' class='hidden bg-white rounded-xl shadow-sm p-6 max-w-2xl'>
 
-            <!-- ── LLM ── -->
-            <h2 class='text-lg font-semibold mb-4'>⚙️ Paramètres LLM</h2>
+            <!-- â”€â”€ LLM â”€â”€ -->
+            <h2 class='text-lg font-semibold mb-4'>âš™ï¸ ParamÃ¨tres LLM</h2>
 
             <div class='space-y-3'>
                 <div>
                     <label class='block text-sm font-medium text-gray-700 mb-1'>URL de base de l'API</label>
                     <input type='text' id='settingLlmUrl' class='w-full p-2 border rounded text-sm' placeholder='http://localhost:1234/v1'>
-                    <p class='text-xs text-gray-400 mt-1'>LM Studio : :1234/v1 · Ollama : :11434/v1 · OpenAI : api.openai.com/v1</p>
+                    <p class='text-xs text-gray-400 mt-1'>LM Studio : :1234/v1 Â· Ollama : :11434/v1 Â· OpenAI : api.openai.com/v1</p>
                 </div>
                 <div>
-                    <label class='block text-sm font-medium text-gray-700 mb-1'>Modèle</label>
+                    <label class='block text-sm font-medium text-gray-700 mb-1'>ModÃ¨le</label>
                     <input type='text' id='settingLlmModel' class='w-full p-2 border rounded text-sm' placeholder='local-model'>
                 </div>
                 <div>
-                    <label class='block text-sm font-medium text-gray-700 mb-1'>Clé API</label>
+                    <label class='block text-sm font-medium text-gray-700 mb-1'>ClÃ© API</label>
                     <input type='text' id='settingLlmKey' class='w-full p-2 border rounded text-sm' placeholder='lm-studio'>
                 </div>
                 <button onclick='saveSettings()' class='bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 text-sm'>Enregistrer</button>
-                <p id='settingsSaved' class='text-green-600 text-sm hidden'>✓ Paramètres enregistrés</p>
+                <p id='settingsSaved' class='text-green-600 text-sm hidden'>âœ“ ParamÃ¨tres enregistrÃ©s</p>
             </div>
 
-            <!-- ── OCR & VISION ── -->
+            <!-- â”€â”€ OCR & VISION â”€â”€ -->
             <div class='mt-8 pt-6 border-t'>
-                <h2 class='text-lg font-semibold mb-1'>🔍 OCR & Analyse par vision</h2>
-                <p class='text-xs text-gray-500 mb-4'>Amélioration de la qualité OCR grâce au LLM, et option d'analyse directe par vision multimodale.</p>
+                <h2 class='text-lg font-semibold mb-1'>ðŸ” OCR & Analyse par vision</h2>
+                <p class='text-xs text-gray-500 mb-4'>AmÃ©lioration de la qualitÃ© OCR grÃ¢ce au LLM, et option d'analyse directe par vision multimodale.</p>
 
                 <!-- Correction OCR -->
                 <div class='bg-gray-50 rounded-xl border p-4 mb-4'>
                     <div class='flex items-center justify-between mb-2'>
                         <div>
-                            <p class='text-sm font-semibold text-gray-700'>🧹 Correction OCR par LLM</p>
-                            <p class='text-xs text-gray-400 mt-0.5'>Le texte extrait par Tesseract est envoyé au LLM pour corriger les erreurs typiques (l/1, 0/O, mots coupés…)</p>
+                            <p class='text-sm font-semibold text-gray-700'>ðŸ§¹ Correction OCR par LLM</p>
+                            <p class='text-xs text-gray-400 mt-0.5'>Le texte extrait par Tesseract est envoyÃ© au LLM pour corriger les erreurs typiques (l/1, 0/O, mots coupÃ©sâ€¦)</p>
                         </div>
                         <label class='relative inline-flex items-center cursor-pointer ml-4'>
                             <input type='checkbox' id='settingOcrCorrection' class='sr-only peer'>
@@ -288,17 +288,17 @@
                         </label>
                     </div>
                     <div>
-                        <label class='block text-xs font-medium text-gray-600 mb-1'>Seuil de confiance OCR <span class='text-gray-400'>(0–100 %)</span></label>
+                        <label class='block text-xs font-medium text-gray-600 mb-1'>Seuil de confiance OCR <span class='text-gray-400'>(0â€“100 %)</span></label>
                         <div class='flex items-center gap-3'>
                             <input type='range' id='settingOcrThreshold' min='0' max='100' value='80'
                                 oninput='document.getElementById("ocrThresholdVal").textContent=this.value+"%"'
                                 class='flex-1'>
                             <span id='ocrThresholdVal' class='text-sm font-mono text-gray-700 w-10 text-right'>80%</span>
                         </div>
-                        <p class='text-xs text-gray-400 mt-1'>En dessous de ce seuil, la correction LLM est automatiquement appliquée. Au-dessus, une légère passe de nettoyage est faite si la correction est activée.</p>
+                        <p class='text-xs text-gray-400 mt-1'>En dessous de ce seuil, la correction LLM est automatiquement appliquÃ©e. Au-dessus, une lÃ©gÃ¨re passe de nettoyage est faite si la correction est activÃ©e.</p>
                     </div>
                     <div class='mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700'>
-                        💡 <strong>Indépendant de la vision :</strong> cette correction fonctionne que la vision soit activée ou non. Quand la vision est activée, la voie OCR (b) bénéficiera en plus de la fusion avec le contexte vision.
+                        ðŸ’¡ <strong>IndÃ©pendant de la vision :</strong> cette correction fonctionne que la vision soit activÃ©e ou non. Quand la vision est activÃ©e, la voie OCR (b) bÃ©nÃ©ficiera en plus de la fusion avec le contexte vision.
                     </div>
                 </div>
 
@@ -306,8 +306,8 @@
                 <div class='bg-purple-50 rounded-xl border border-purple-200 p-4'>
                     <div class='flex items-center justify-between mb-3'>
                         <div>
-                            <p class='text-sm font-semibold text-purple-800'>👁 Analyse par vision (LLM multimodal)</p>
-                            <p class='text-xs text-purple-600 mt-0.5'>Envoie l'image directement au LLM (bypass OCR). Meilleure précision sur les documents complexes, tampons, manuscrits.</p>
+                            <p class='text-sm font-semibold text-purple-800'>ðŸ‘ Analyse par vision (LLM multimodal)</p>
+                            <p class='text-xs text-purple-600 mt-0.5'>Envoie l'image directement au LLM (bypass OCR). Meilleure prÃ©cision sur les documents complexes, tampons, manuscrits.</p>
                         </div>
                         <label class='relative inline-flex items-center cursor-pointer ml-4'>
                             <input type='checkbox' id='settingVisionEnabled' onchange='toggleVisionPanel()' class='sr-only peer'>
@@ -319,48 +319,48 @@
                         <div>
                             <label class='block text-xs font-medium text-gray-700 mb-1'>Provider vision</label>
                             <select id='settingVisionProvider' onchange='toggleVisionProvider()' class='w-full p-2 border rounded text-sm bg-white'>
-                                <option value='local'>🖥 Local (LM Studio / Ollama)</option>
-                                <option value='openai'>☁️ OpenAI</option>
-                                <option value='anthropic'>🤖 Anthropic</option>
-                                <option value='gemini'>🔷 Google Gemini</option>
+                                <option value='local'>ðŸ–¥ Local (LM Studio / Ollama)</option>
+                                <option value='openai'>â˜ï¸ OpenAI</option>
+                                <option value='anthropic'>ðŸ¤– Anthropic</option>
+                                <option value='gemini'>ðŸ”· Google Gemini</option>
                             </select>
                         </div>
 
                         <div id='visionLocalNote' class='bg-white border rounded p-3 text-xs text-gray-600'>
-                            ℹ️ En mode local, le modèle principal doit supporter la vision (ex: <code class='font-mono bg-gray-100 px-1 rounded'>llava-v1.6</code>, <code class='font-mono bg-gray-100 px-1 rounded'>minicpm-v</code>, <code class='font-mono bg-gray-100 px-1 rounded'>moondream2</code>).
-                            L'URL et la clé du LLM principal seront utilisées sauf si vous les surchargez ci-dessous.
+                            â„¹ï¸ En mode local, le modÃ¨le principal doit supporter la vision (ex: <code class='font-mono bg-gray-100 px-1 rounded'>llava-v1.6</code>, <code class='font-mono bg-gray-100 px-1 rounded'>minicpm-v</code>, <code class='font-mono bg-gray-100 px-1 rounded'>moondream2</code>).
+                            L'URL et la clÃ© du LLM principal seront utilisÃ©es sauf si vous les surchargez ci-dessous.
                         </div>
 
                         <div id='visionExternalNote' class='hidden bg-amber-50 border border-amber-200 rounded p-3 text-xs text-amber-700'>
-                            ⚠️ Mode externe : des données (images de vos documents) seront envoyées à un service cloud. Assurez-vous que c'est compatible avec vos obligations de confidentialité.
+                            âš ï¸ Mode externe : des donnÃ©es (images de vos documents) seront envoyÃ©es Ã  un service cloud. Assurez-vous que c'est compatible avec vos obligations de confidentialitÃ©.
                         </div>
 
                         <div class='grid grid-cols-2 gap-3'>
                             <div>
-                                <label class='block text-xs font-medium text-gray-700 mb-1'>Modèle vision <span class='text-gray-400'>(optionnel)</span></label>
-                                <input type='text' id='settingVisionModel' placeholder='Nom du modèle (optionnel)'
+                                <label class='block text-xs font-medium text-gray-700 mb-1'>ModÃ¨le vision <span class='text-gray-400'>(optionnel)</span></label>
+                                <input type='text' id='settingVisionModel' placeholder='Nom du modÃ¨le (optionnel)'
                                     class='w-full p-2 border rounded text-sm'>
                             </div>
                             <div id='visionApiKeyField'>
-                                <label class='block text-xs font-medium text-gray-700 mb-1'>Clé API vision <span class='text-gray-400'>(si externe)</span></label>
+                                <label class='block text-xs font-medium text-gray-700 mb-1'>ClÃ© API vision <span class='text-gray-400'>(si externe)</span></label>
                                 <input type='password' id='settingVisionApiKey' placeholder='sk-...'
                                     class='w-full p-2 border rounded text-sm'>
                             </div>
                         </div>
                         <div id='visionBaseUrlField'>
-                            <label class='block text-xs font-medium text-gray-700 mb-1'>URL base vision <span class='text-gray-400'>(local différent du LLM principal)</span></label>
+                            <label class='block text-xs font-medium text-gray-700 mb-1'>URL base vision <span class='text-gray-400'>(local diffÃ©rent du LLM principal)</span></label>
                             <input type='text' id='settingVisionBaseUrl' placeholder='http://localhost:1234/v1'
                                 class='w-full p-2 border rounded text-sm'>
                         </div>
 
-                        <!-- Fusion vision × OCR -->
+                        <!-- Fusion vision Ã— OCR -->
                         <div class='mt-3 pt-3 border-t border-purple-200'>
                             <div class='flex items-center justify-between'>
                                 <div>
-                                    <p class='text-sm font-semibold text-purple-800'>🔀 Fusion vision × OCR (voie b)</p>
+                                    <p class='text-sm font-semibold text-purple-800'>ðŸ”€ Fusion vision Ã— OCR (voie b)</p>
                                     <p class='text-xs text-purple-600 mt-0.5'>
-                                        En parallèle de la vision directe, lance Tesseract puis corrige l'OCR
-                                        en utilisant le contexte JSON de la vision. Les deux JSON sont ensuite fusionnés.
+                                        En parallÃ¨le de la vision directe, lance Tesseract puis corrige l'OCR
+                                        en utilisant le contexte JSON de la vision. Les deux JSON sont ensuite fusionnÃ©s.
                                     </p>
                                 </div>
                                 <label class='relative inline-flex items-center cursor-pointer ml-4'>
@@ -369,9 +369,9 @@
                                 </label>
                             </div>
                             <div class='mt-2 text-xs text-purple-700 bg-purple-100 rounded-lg p-2'>
-                                🔬 <strong>Pipeline double voie :</strong>
-                                Voie a) Image → LLM multimodal → JSON &nbsp;|&nbsp;
-                                Voie b) OCR → correction enrichie → LLM → JSON &nbsp;→&nbsp; <strong>Merge final</strong>
+                                ðŸ”¬ <strong>Pipeline double voie :</strong>
+                                Voie a) Image â†’ LLM multimodal â†’ JSON &nbsp;|&nbsp;
+                                Voie b) OCR â†’ correction enrichie â†’ LLM â†’ JSON &nbsp;â†’&nbsp; <strong>Merge final</strong>
                             </div>
                         </div>
                     </div>
@@ -379,109 +379,109 @@
 
                 <div class='mt-4 flex gap-3'>
                     <button onclick='saveOcrVisionSettings()' class='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm'>Enregistrer OCR/Vision</button>
-                    <p id='ocrVisionSaved' class='text-green-600 text-sm hidden self-center'>✓ Sauvegardé</p>
+                    <p id='ocrVisionSaved' class='text-green-600 text-sm hidden self-center'>âœ“ SauvegardÃ©</p>
                 </div>
             </div>
 
 
-            <!-- ── GUIDE CONNEXION EMAIL ── -->
+            <!-- â”€â”€ GUIDE CONNEXION EMAIL â”€â”€ -->
             <div class='mt-8 pt-6 border-t'>
-                <h2 class='text-lg font-semibold mb-1'>📧 Connexion Email — Quel provider utilisez-vous ?</h2>
+                <h2 class='text-lg font-semibold mb-1'>ðŸ“§ Connexion Email â€” Quel provider utilisez-vous ?</h2>
                 <p class='text-xs text-gray-500 mb-4'>Cliquez sur votre fournisseur pour afficher le guide de configuration.</p>
                 <div class='grid grid-cols-2 gap-3 mb-6 sm:grid-cols-4'>
                     <button onclick='showGuide("gmail")'     class='guide-btn border-2 border-gray-200 rounded-xl p-3 text-center hover:border-red-400 hover:bg-red-50 transition'>
-                        <div class='text-2xl mb-1'>📮</div><div class='text-xs font-semibold text-gray-700'>Gmail</div><div class='text-xs text-gray-400'>@gmail.com</div>
+                        <div class='text-2xl mb-1'>ðŸ“®</div><div class='text-xs font-semibold text-gray-700'>Gmail</div><div class='text-xs text-gray-400'>@gmail.com</div>
                     </button>
                     <button onclick='showGuide("outlook")'   class='guide-btn border-2 border-gray-200 rounded-xl p-3 text-center hover:border-blue-400 hover:bg-blue-50 transition'>
-                        <div class='text-2xl mb-1'>🪟</div><div class='text-xs font-semibold text-gray-700'>Outlook perso</div><div class='text-xs text-gray-400'>@hotmail/@live</div>
+                        <div class='text-2xl mb-1'>ðŸªŸ</div><div class='text-xs font-semibold text-gray-700'>Outlook perso</div><div class='text-xs text-gray-400'>@hotmail/@live</div>
                     </button>
                     <button onclick='showGuide("m365")'      class='guide-btn border-2 border-gray-200 rounded-xl p-3 text-center hover:border-blue-400 hover:bg-blue-50 transition'>
-                        <div class='text-2xl mb-1'>🏢</div><div class='text-xs font-semibold text-gray-700'>Microsoft 365</div><div class='text-xs text-gray-400'>Entreprise / École</div>
+                        <div class='text-2xl mb-1'>ðŸ¢</div><div class='text-xs font-semibold text-gray-700'>Microsoft 365</div><div class='text-xs text-gray-400'>Entreprise / Ã‰cole</div>
                     </button>
                     <button onclick='showGuide("other")'     class='guide-btn border-2 border-gray-200 rounded-xl p-3 text-center hover:border-gray-400 hover:bg-gray-50 transition'>
-                        <div class='text-2xl mb-1'>✉️</div><div class='text-xs font-semibold text-gray-700'>Autre</div><div class='text-xs text-gray-400'>Yahoo, OVH, Free…</div>
+                        <div class='text-2xl mb-1'>âœ‰ï¸</div><div class='text-xs font-semibold text-gray-700'>Autre</div><div class='text-xs text-gray-400'>Yahoo, OVH, Freeâ€¦</div>
                     </button>
                 </div>
 
                 <!-- Guide Gmail -->
                 <div id='guide-gmail' class='guide-panel hidden bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-sm'>
-                    <h3 class='font-bold text-red-700 mb-2'>📮 Gmail — OAuth2 obligatoire (gratuit)</h3>
-                    <p class='text-gray-600 mb-3'>Google a supprimé l'auth basique. Il faut créer une app OAuth2 gratuite sur Google Cloud Console (sans carte de crédit, sans vérification pour usage personnel).</p>
+                    <h3 class='font-bold text-red-700 mb-2'>ðŸ“® Gmail â€” OAuth2 obligatoire (gratuit)</h3>
+                    <p class='text-gray-600 mb-3'>Google a supprimÃ© l'auth basique. Il faut crÃ©er une app OAuth2 gratuite sur Google Cloud Console (sans carte de crÃ©dit, sans vÃ©rification pour usage personnel).</p>
                     <ol class='space-y-2 text-gray-700 list-decimal list-inside'>
-                        <li>Aller sur <a href='https://console.cloud.google.com' target='_blank' class='text-blue-600 underline font-medium'>console.cloud.google.com</a> → <b>Créer un projet</b> (ex: "PaperFree-AI")</li>
-                        <li><b>APIs &amp; Services</b> → <b>Bibliothèque</b> → chercher <b>"Gmail API"</b> → <b>Activer</b></li>
-                        <li><b>APIs &amp; Services</b> → <b>Écran de consentement OAuth</b> → Type : <b>Externe</b> → remplir le nom → Sauvegarder</li>
-                        <li><b>Credentials</b> → <b>+ Créer des identifiants</b> → <b>ID client OAuth 2.0</b> → Type : <b>Application Web</b></li>
-                        <li>URI de redirection autorisée : <code class='bg-white border px-1 rounded font-mono text-xs select-all' onclick='this.select()'>http://localhost:8000/email/oauth/google/callback</code></li>
-                        <li>Copier le <b>Client ID</b> et le <b>Client Secret</b> ci-dessous → <b>Enregistrer</b> → <b>Connecter mon compte Gmail</b></li>
-                        <li>Si l'écran "App non vérifiée" apparaît → cliquer <b>Avancé</b> → <b>Accéder à [nom] (non sécurisé)</b> — c'est normal pour une app personnelle.</li>
+                        <li>Aller sur <a href='https://console.cloud.google.com' target='_blank' class='text-blue-600 underline font-medium'>console.cloud.google.com</a> â†’ <b>CrÃ©er un projet</b> (ex: "PaperFree-AI")</li>
+                        <li><b>APIs &amp; Services</b> â†’ <b>BibliothÃ¨que</b> â†’ chercher <b>"Gmail API"</b> â†’ <b>Activer</b></li>
+                        <li><b>APIs &amp; Services</b> â†’ <b>Ã‰cran de consentement OAuth</b> â†’ Type : <b>Externe</b> â†’ remplir le nom â†’ Sauvegarder</li>
+                        <li><b>Credentials</b> â†’ <b>+ CrÃ©er des identifiants</b> â†’ <b>ID client OAuth 2.0</b> â†’ Type : <b>Application Web</b></li>
+                        <li>URI de redirection autorisÃ©e : <code class='bg-white border px-1 rounded font-mono text-xs select-all' onclick='this.select()'>http://localhost:8000/email/oauth/google/callback</code></li>
+                        <li>Copier le <b>Client ID</b> et le <b>Client Secret</b> ci-dessous â†’ <b>Enregistrer</b> â†’ <b>Connecter mon compte Gmail</b></li>
+                        <li>Si l'Ã©cran "App non vÃ©rifiÃ©e" apparaÃ®t â†’ cliquer <b>AvancÃ©</b> â†’ <b>AccÃ©der Ã  [nom] (non sÃ©curisÃ©)</b> â€” c'est normal pour une app personnelle.</li>
                     </ol>
-                    <p class='mt-3 text-xs text-gray-500'>ℹ️ Serveur IMAP : <code class='bg-white px-1 rounded cursor-pointer font-mono' onclick='fillImap("imap.gmail.com")'>imap.gmail.com</code> (rempli automatiquement lors de la connexion)</p>
+                    <p class='mt-3 text-xs text-gray-500'>â„¹ï¸ Serveur IMAP : <code class='bg-white px-1 rounded cursor-pointer font-mono' onclick='fillImap("imap.gmail.com")'>imap.gmail.com</code> (rempli automatiquement lors de la connexion)</p>
                 </div>
 
                 <!-- Guide Outlook perso -->
                 <div id='guide-outlook' class='guide-panel hidden bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 text-sm'>
-                    <h3 class='font-bold text-blue-700 mb-2'>🪟 Outlook / Hotmail / Live — Mot de passe d'application (recommandé)</h3>
-                    <p class='text-gray-600 mb-2'>Microsoft a rendu très difficile l'enregistrement d'une app Azure pour les comptes personnels. La solution la plus simple est un <b>mot de passe d'application</b>, qui fonctionne avec tous les clients email tiers (Thunderbird, Apple Mail, etc.).</p>
+                    <h3 class='font-bold text-blue-700 mb-2'>ðŸªŸ Outlook / Hotmail / Live â€” Mot de passe d'application (recommandÃ©)</h3>
+                    <p class='text-gray-600 mb-2'>Microsoft a rendu trÃ¨s difficile l'enregistrement d'une app Azure pour les comptes personnels. La solution la plus simple est un <b>mot de passe d'application</b>, qui fonctionne avec tous les clients email tiers (Thunderbird, Apple Mail, etc.).</p>
                     <div class='bg-white border border-blue-100 rounded-lg p-3 mb-3'>
-                        <p class='font-semibold text-blue-800 mb-2'>✅ Option 1 — Mot de passe d'application (simple, sans Azure)</p>
+                        <p class='font-semibold text-blue-800 mb-2'>âœ… Option 1 â€” Mot de passe d'application (simple, sans Azure)</p>
                         <ol class='space-y-1 text-gray-700 list-decimal list-inside'>
                             <li>Aller sur <a href='https://account.microsoft.com/security' target='_blank' class='text-blue-600 underline font-medium'>account.microsoft.com/security</a></li>
-                            <li>Activer la <b>vérification en deux étapes</b> si ce n'est pas déjà fait</li>
-                            <li>Section <b>Sécurité avancée</b> → <b>Mot de passe d'application</b> → <b>Créer</b></li>
-                            <li>Nommer l'app "PaperFree-AI" → copier le mot de passe généré</li>
+                            <li>Activer la <b>vÃ©rification en deux Ã©tapes</b> si ce n'est pas dÃ©jÃ  fait</li>
+                            <li>Section <b>SÃ©curitÃ© avancÃ©e</b> â†’ <b>Mot de passe d'application</b> â†’ <b>CrÃ©er</b></li>
+                            <li>Nommer l'app "PaperFree-AI" â†’ copier le mot de passe gÃ©nÃ©rÃ©</li>
                             <li>Dans la section IMAP ci-dessous : saisir votre adresse email + ce mot de passe</li>
                             <li>Serveur IMAP : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer text-xs' onclick='fillImap("imap-mail.outlook.com")'>imap-mail.outlook.com</code></li>
                         </ol>
                     </div>
                     <div class='bg-white border border-gray-200 rounded-lg p-3'>
-                        <p class='font-semibold text-gray-600 mb-2'>⚙️ Option 2 — OAuth2 via Azure (pour développeurs, carte de crédit requise pour vérification)</p>
+                        <p class='font-semibold text-gray-600 mb-2'>âš™ï¸ Option 2 â€” OAuth2 via Azure (pour dÃ©veloppeurs, carte de crÃ©dit requise pour vÃ©rification)</p>
                         <ol class='space-y-1 text-gray-600 list-decimal list-inside text-xs'>
-                            <li>Créer un compte Azure sur <a href='https://portal.azure.com' target='_blank' class='text-blue-600 underline'>portal.azure.com</a> (vérification CB, non débité)</li>
-                            <li>Microsoft Entra ID → <b>Inscriptions d'applications</b> → <b>Nouvelle inscription</b></li>
-                            <li>Type : <b>Comptes Microsoft personnels uniquement</b> · Redirect URI : <code class='bg-gray-100 px-1 rounded font-mono' onclick='this.select()'>http://localhost:8000/email/oauth/callback</code></li>
-                            <li><b>Certificats &amp; secrets</b> → Nouveau secret → copier la valeur</li>
-                            <li><b>Autorisations API</b> → Office 365 Exchange Online → <code class='bg-gray-100 px-1 rounded font-mono'>IMAP.AccessAsUser.All</code> + <code class='bg-gray-100 px-1 rounded font-mono'>offline_access</code></li>
-                            <li>Remplir les champs OAuth2 Microsoft ci-dessous → Connecter</li>
+                            <li>CrÃ©er un compte Azure sur <a href='https://portal.azure.com' target='_blank' class='text-blue-600 underline'>portal.azure.com</a> (vÃ©rification CB, non dÃ©bitÃ©)</li>
+                            <li>Microsoft Entra ID â†’ <b>Inscriptions d'applications</b> â†’ <b>Nouvelle inscription</b></li>
+                            <li>Type : <b>Comptes Microsoft personnels uniquement</b> Â· Redirect URI : <code class='bg-gray-100 px-1 rounded font-mono' onclick='this.select()'>http://localhost:8000/email/oauth/callback</code></li>
+                            <li><b>Certificats &amp; secrets</b> â†’ Nouveau secret â†’ copier la valeur</li>
+                            <li><b>Autorisations API</b> â†’ Office 365 Exchange Online â†’ <code class='bg-gray-100 px-1 rounded font-mono'>IMAP.AccessAsUser.All</code> + <code class='bg-gray-100 px-1 rounded font-mono'>offline_access</code></li>
+                            <li>Remplir les champs OAuth2 Microsoft ci-dessous â†’ Connecter</li>
                         </ol>
                     </div>
                 </div>
 
                 <!-- Guide Microsoft 365 -->
                 <div id='guide-m365' class='guide-panel hidden bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4 text-sm'>
-                    <h3 class='font-bold text-indigo-700 mb-2'>🏢 Microsoft 365 Entreprise / École — OAuth2 Azure</h3>
-                    <p class='text-gray-600 mb-3'>Votre organisation dispose déjà d'un tenant Azure. Demandez à votre administrateur IT d'enregistrer l'application, ou faites-le vous-même si vous avez les droits.</p>
+                    <h3 class='font-bold text-indigo-700 mb-2'>ðŸ¢ Microsoft 365 Entreprise / Ã‰cole â€” OAuth2 Azure</h3>
+                    <p class='text-gray-600 mb-3'>Votre organisation dispose dÃ©jÃ  d'un tenant Azure. Demandez Ã  votre administrateur IT d'enregistrer l'application, ou faites-le vous-mÃªme si vous avez les droits.</p>
                     <ol class='space-y-2 text-gray-700 list-decimal list-inside'>
                         <li>Aller sur <a href='https://portal.azure.com' target='_blank' class='text-blue-600 underline font-medium'>portal.azure.com</a> avec votre compte professionnel</li>
-                        <li><b>Microsoft Entra ID</b> → <b>Inscriptions d'applications</b> → <b>Nouvelle inscription</b></li>
+                        <li><b>Microsoft Entra ID</b> â†’ <b>Inscriptions d'applications</b> â†’ <b>Nouvelle inscription</b></li>
                         <li>Type : <b>Comptes dans cet annuaire uniquement</b> (ou multitenant si plusieurs organisations)</li>
                         <li>Redirect URI : <code class='bg-white border px-1 rounded font-mono text-xs select-all' onclick='this.select()'>http://localhost:8000/email/oauth/callback</code></li>
-                        <li><b>Certificats &amp; secrets</b> → Nouveau secret client → copier la valeur immédiatement</li>
-                        <li><b>Autorisations API</b> → <b>Ajouter</b> → Office 365 Exchange Online → <b>Autorisations déléguées</b> → cocher <code class='bg-white border px-1 rounded font-mono text-xs'>IMAP.AccessAsUser.All</code> + <code class='bg-white border px-1 rounded font-mono text-xs'>offline_access</code></li>
+                        <li><b>Certificats &amp; secrets</b> â†’ Nouveau secret client â†’ copier la valeur immÃ©diatement</li>
+                        <li><b>Autorisations API</b> â†’ <b>Ajouter</b> â†’ Office 365 Exchange Online â†’ <b>Autorisations dÃ©lÃ©guÃ©es</b> â†’ cocher <code class='bg-white border px-1 rounded font-mono text-xs'>IMAP.AccessAsUser.All</code> + <code class='bg-white border px-1 rounded font-mono text-xs'>offline_access</code></li>
                         <li>Cliquer <b>Accorder le consentement administrateur</b></li>
-                        <li>Remplir Client ID &amp; Secret dans la section OAuth2 Microsoft ci-dessous → Connecter</li>
+                        <li>Remplir Client ID &amp; Secret dans la section OAuth2 Microsoft ci-dessous â†’ Connecter</li>
                     </ol>
-                    <p class='mt-3 text-xs text-gray-500'>ℹ️ Serveur IMAP : <code class='bg-white px-1 rounded cursor-pointer font-mono' onclick='fillImap("outlook.office365.com")'>outlook.office365.com</code></p>
+                    <p class='mt-3 text-xs text-gray-500'>â„¹ï¸ Serveur IMAP : <code class='bg-white px-1 rounded cursor-pointer font-mono' onclick='fillImap("outlook.office365.com")'>outlook.office365.com</code></p>
                 </div>
 
                 <!-- Guide Autre -->
                 <div id='guide-other' class='guide-panel hidden bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4 text-sm'>
-                    <h3 class='font-bold text-gray-700 mb-2'>✉️ Autres providers — Connexion directe IMAP</h3>
-                    <p class='text-gray-600 mb-3'>Yahoo, OVH, Free, Orange, Fastmail, et la plupart des hébergeurs mail supportent encore l'authentification IMAP classique ou un mot de passe d'application.</p>
+                    <h3 class='font-bold text-gray-700 mb-2'>âœ‰ï¸ Autres providers â€” Connexion directe IMAP</h3>
+                    <p class='text-gray-600 mb-3'>Yahoo, OVH, Free, Orange, Fastmail, et la plupart des hÃ©bergeurs mail supportent encore l'authentification IMAP classique ou un mot de passe d'application.</p>
                     <div class='space-y-2'>
                         <div class='bg-white border rounded-lg p-3'>
                             <p class='font-semibold text-gray-700 mb-1'>Yahoo Mail</p>
-                            <p class='text-gray-600 text-xs'>Activer "Accès aux apps moins sécurisées" <b>ou</b> générer un App Password sur <a href='https://security.yahoo.com' target='_blank' class='text-blue-600 underline'>security.yahoo.com</a>. Serveur : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.mail.yahoo.com")'>imap.mail.yahoo.com</code></p>
+                            <p class='text-gray-600 text-xs'>Activer "AccÃ¨s aux apps moins sÃ©curisÃ©es" <b>ou</b> gÃ©nÃ©rer un App Password sur <a href='https://security.yahoo.com' target='_blank' class='text-blue-600 underline'>security.yahoo.com</a>. Serveur : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.mail.yahoo.com")'>imap.mail.yahoo.com</code></p>
                         </div>
                         <div class='bg-white border rounded-lg p-3'>
                             <p class='font-semibold text-gray-700 mb-1'>OVH / Infomaniak / Gandi</p>
-                            <p class='text-gray-600 text-xs'>Connexion directe avec vos identifiants email habituels. Serveur IMAP fourni par votre hébergeur dans votre espace client.</p>
+                            <p class='text-gray-600 text-xs'>Connexion directe avec vos identifiants email habituels. Serveur IMAP fourni par votre hÃ©bergeur dans votre espace client.</p>
                         </div>
                         <div class='bg-white border rounded-lg p-3'>
                             <p class='font-semibold text-gray-700 mb-1'>Free / Orange / SFR</p>
                             <p class='text-gray-600 text-xs'>
-                                Free : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.free.fr")'>imap.free.fr</code> ·
-                                Orange : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.orange.fr")'>imap.orange.fr</code> ·
+                                Free : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.free.fr")'>imap.free.fr</code> Â·
+                                Orange : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.orange.fr")'>imap.orange.fr</code> Â·
                                 SFR : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.sfr.fr")'>imap.sfr.fr</code>
                             </p>
                         </div>
@@ -490,9 +490,9 @@
                 </div>
             </div>
 
-            <!-- ── CONFIG IMAP ── -->
+            <!-- â”€â”€ CONFIG IMAP â”€â”€ -->
             <div class='mt-6 pt-6 border-t'>
-                <h2 class='text-lg font-semibold mb-1'>📧 Configuration IMAP</h2>
+                <h2 class='text-lg font-semibold mb-1'>ðŸ“§ Configuration IMAP</h2>
                 <div class='space-y-3'>
                     <div class='grid grid-cols-2 gap-3'>
                         <div>
@@ -506,17 +506,17 @@
                     </div>
                     <div>
                         <label class='block text-sm font-medium text-gray-700 mb-1'>Mot de passe <span class='font-normal text-gray-400'>(ou mot de passe d'application)</span></label>
-                        <input type='password' id='settingEmailPass' class='w-full p-2 border rounded text-sm' placeholder='••••••••'>
+                        <input type='password' id='settingEmailPass' class='w-full p-2 border rounded text-sm' placeholder='â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢'>
                         <p class='text-xs text-gray-400 mt-1'>Laisser vide si vous utilisez OAuth2 (Gmail ou Microsoft 365).</p>
                     </div>
                     <div class='grid grid-cols-2 gap-3'>
                         <div>
-                            <label class='block text-sm font-medium text-gray-700 mb-1'>Dossier surveillé</label>
+                            <label class='block text-sm font-medium text-gray-700 mb-1'>Dossier surveillÃ©</label>
                             <input type='text' id='settingEmailFolder' class='w-full p-2 border rounded text-sm' placeholder='INBOX'>
                         </div>
                         <div>
-                            <label class='block text-sm font-medium text-gray-700 mb-1'>Dossier "Traité"</label>
-                            <input type='text' id='settingEmailTreated' class='w-full p-2 border rounded text-sm' placeholder='PaperFree-Traité'>
+                            <label class='block text-sm font-medium text-gray-700 mb-1'>Dossier "TraitÃ©"</label>
+                            <input type='text' id='settingEmailTreated' class='w-full p-2 border rounded text-sm' placeholder='PaperFree-TraitÃ©'>
                         </div>
                     </div>
                     <div class='grid grid-cols-3 gap-3'>
@@ -529,23 +529,23 @@
                             <input type='number' id='settingEmailPurgeInterval' class='w-full p-2 border rounded text-sm' placeholder='24'>
                         </div>
                         <div>
-                            <label class='block text-sm font-medium text-gray-700 mb-1'>Âge promo (jours)</label>
+                            <label class='block text-sm font-medium text-gray-700 mb-1'>Ã‚ge promo (jours)</label>
                             <input type='number' id='settingEmailPromoDays' class='w-full p-2 border rounded text-sm' placeholder='7'>
                         </div>
                     </div>
                     <div class='flex gap-2 flex-wrap'>
                         <button onclick='saveEmailSettings()' class='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm'>Enregistrer</button>
-                        <button onclick='testEmailConnection()' class='bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm'>🔌 Tester la connexion</button>
+                        <button onclick='testEmailConnection()' class='bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm'>ðŸ”Œ Tester la connexion</button>
                     </div>
-                    <p id='emailSettingsSaved' class='text-green-600 text-sm hidden'>✓ Config email sauvegardée</p>
+                    <p id='emailSettingsSaved' class='text-green-600 text-sm hidden'>âœ“ Config email sauvegardÃ©e</p>
                     <p id='emailTestResult' class='text-sm hidden'></p>
                 </div>
             </div>
 
-            <!-- ── OAuth2 Microsoft ── -->
+            <!-- â”€â”€ OAuth2 Microsoft â”€â”€ -->
             <div class='mt-8 pt-6 border-t'>
-                <h2 class='text-lg font-semibold mb-1'>🔐 OAuth2 Microsoft <span class='text-sm font-normal text-gray-400'>(Microsoft 365 pro / Azure)</span></h2>
-                <p class='text-xs text-gray-500 mb-1'>Pour les comptes <b>@hotmail/@live/@outlook.com personnels</b>, préférez le <b>Mot de passe d'application</b> (voir guide Outlook ci-dessus).<br>OAuth2 Microsoft est destiné aux comptes d'entreprise ou aux développeurs disposant d'un tenant Azure.</p>
+                <h2 class='text-lg font-semibold mb-1'>ðŸ” OAuth2 Microsoft <span class='text-sm font-normal text-gray-400'>(Microsoft 365 pro / Azure)</span></h2>
+                <p class='text-xs text-gray-500 mb-1'>Pour les comptes <b>@hotmail/@live/@outlook.com personnels</b>, prÃ©fÃ©rez le <b>Mot de passe d'application</b> (voir guide Outlook ci-dessus).<br>OAuth2 Microsoft est destinÃ© aux comptes d'entreprise ou aux dÃ©veloppeurs disposant d'un tenant Azure.</p>
                 <div class='space-y-3 mt-3'>
                     <div class='grid grid-cols-2 gap-3'>
                         <div>
@@ -563,18 +563,18 @@
                     </div>
                     <div class='flex gap-3 items-center flex-wrap'>
                         <button onclick='saveOauthSettings()' class='bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 text-sm'>Enregistrer</button>
-                        <button onclick='startOauthFlow("microsoft")' id='btnOauthConnect' class='bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium'>🔑 Connecter Outlook/Microsoft 365</button>
-                        <button onclick='oauthDisconnect("microsoft")' id='btnOauthDisconnect' class='hidden bg-red-50 text-red-600 px-4 py-2 rounded hover:bg-red-100 text-sm'>Déconnecter</button>
+                        <button onclick='startOauthFlow("microsoft")' id='btnOauthConnect' class='bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium'>ðŸ”‘ Connecter Outlook/Microsoft 365</button>
+                        <button onclick='oauthDisconnect("microsoft")' id='btnOauthDisconnect' class='hidden bg-red-50 text-red-600 px-4 py-2 rounded hover:bg-red-100 text-sm'>DÃ©connecter</button>
                         <span id='oauthStatus' class='text-sm'></span>
                     </div>
-                    <p id='oauthSettingsSaved' class='text-green-600 text-sm hidden'>✓ Config OAuth Microsoft sauvegardée</p>
+                    <p id='oauthSettingsSaved' class='text-green-600 text-sm hidden'>âœ“ Config OAuth Microsoft sauvegardÃ©e</p>
                 </div>
             </div>
 
-            <!-- ── OAuth2 Google ── -->
+            <!-- â”€â”€ OAuth2 Google â”€â”€ -->
             <div class='mt-8 pt-6 border-t'>
-                <h2 class='text-lg font-semibold mb-1'>🔴 OAuth2 Google <span class='text-sm font-normal text-gray-400'>(Gmail — obligatoire)</span></h2>
-                <p class='text-xs text-gray-500 mb-3'>Google n'accepte plus l'auth basique. Voir le <button onclick='showGuide("gmail")' class='text-blue-500 underline'>guide Gmail</button> ci-dessus pour créer votre app Google Cloud Console (gratuit, sans carte de crédit).</p>
+                <h2 class='text-lg font-semibold mb-1'>ðŸ”´ OAuth2 Google <span class='text-sm font-normal text-gray-400'>(Gmail â€” obligatoire)</span></h2>
+                <p class='text-xs text-gray-500 mb-3'>Google n'accepte plus l'auth basique. Voir le <button onclick='showGuide("gmail")' class='text-blue-500 underline'>guide Gmail</button> ci-dessus pour crÃ©er votre app Google Cloud Console (gratuit, sans carte de crÃ©dit).</p>
                 <div class='space-y-3'>
                     <div class='grid grid-cols-2 gap-3'>
                         <div>
@@ -592,11 +592,11 @@
                     </div>
                     <div class='flex gap-3 items-center flex-wrap'>
                         <button onclick='saveGoogleOauthSettings()' class='bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 text-sm'>Enregistrer</button>
-                        <button onclick='startOauthFlow("google")' id='btnGoogleConnect' class='bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 text-sm font-medium'>🔑 Connecter mon compte Gmail</button>
-                        <button onclick='oauthDisconnect("google")' id='btnGoogleDisconnect' class='hidden bg-red-50 text-red-600 px-4 py-2 rounded hover:bg-red-100 text-sm'>Déconnecter</button>
+                        <button onclick='startOauthFlow("google")' id='btnGoogleConnect' class='bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 text-sm font-medium'>ðŸ”‘ Connecter mon compte Gmail</button>
+                        <button onclick='oauthDisconnect("google")' id='btnGoogleDisconnect' class='hidden bg-red-50 text-red-600 px-4 py-2 rounded hover:bg-red-100 text-sm'>DÃ©connecter</button>
                         <span id='googleOauthStatus' class='text-sm'></span>
                     </div>
-                    <p id='googleOauthSettingsSaved' class='text-green-600 text-sm hidden'>✓ Config OAuth Google sauvegardée</p>
+                    <p id='googleOauthSettingsSaved' class='text-green-600 text-sm hidden'>âœ“ Config OAuth Google sauvegardÃ©e</p>
                 </div>
             </div>
         </div>
@@ -604,1224 +604,16 @@
     </div><!-- /appSection -->
 </div>
 
+<script src='js/utils.js'></script>
+<script src='js/auth.js'></script>
+<script src='js/documents.js'></script>
+<script src='js/classeur.js'></script>
+<script src='js/settings.js'></script>
+<script src='js/email.js'></script>
 <script>
-const API_URL = 'http://localhost:8000';
-// Migration Basic→JWT : on vide les anciens tokens Basic Auth stockés
-(function() {
-    const stored = localStorage.getItem('paperfree_auth');
-    if (stored && stored.startsWith('Basic ')) { localStorage.removeItem('paperfree_auth'); }
-})();
-let authHeader = localStorage.getItem('paperfree_auth'); // format: "Bearer <jwt>"
-let refreshToken = localStorage.getItem('paperfree_refresh');
-let currentDocId = null;
-let allDocs = [];
-
-// ─── Guides provider ─────────────────────────────────────────────────────────
-function showGuide(provider) {
-    // Fermer tous les guides ouverts
-    document.querySelectorAll('.guide-panel').forEach(p => p.classList.add('hidden'));
-    // Ouvrir le guide demandé (toggle si déjà visible)
-    const panel = document.getElementById('guide-' + provider);
-    if (panel) panel.classList.toggle('hidden');
-    // Scroll vers le guide
-    if (panel && !panel.classList.contains('hidden')) {
-        panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-}
-
-function fillImap(host) {
-    document.getElementById('settingEmailHost').value = host;
-    document.getElementById('settingEmailHost').focus();
-}
-
-// ─── Auth ────────────────────────────────────────────────────────────────────
-async function checkStatus() {
-    try {
-        const res = await fetch(`${API_URL}/status`);
-        if (!res.ok) { showSection('login'); return; }
-        const data = await res.json();
-        if (data.setup_required) { showSection('setup'); }
-        else if (!authHeader)    { showSection('login'); }
-        else { showSection('app'); loadDocuments(); loadSettings(); }
-    } catch(e) {
-        // Backend inaccessible — afficher login avec message d'erreur
-        showSection('login');
-        const el = document.getElementById('loginError');
-        if (el) { el.textContent = '⚠️ Impossible de joindre le serveur. Vérifiez que le backend est démarré.'; el.classList.remove('hidden'); }
-    }
-}
-
-function showSection(name) {
-    ['setup','login','app'].forEach(s => document.getElementById(s+'Section').classList.add('hidden'));
-    document.getElementById(name+'Section').classList.remove('hidden');
-}
-
-async function handleSetup() {
-    const user = document.getElementById('setupUser').value;
-    const pass = document.getElementById('setupPass').value;
-    const url  = document.getElementById('setupLlm').value;
-    try {
-        const res = await fetch(`${API_URL}/setup`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: user, password: pass, llm_url: url })
-        });
-        if (res.ok) { showSection('login'); }
-        else {
-            const err = document.getElementById('setupError');
-            let msg = 'Erreur lors de la configuration';
-            try {
-                const body = await res.json();
-                console.error('Setup error body:', body);
-                if (body.detail) {
-                    // Pydantic retourne detail comme tableau [{loc,msg,type}]
-                    if (Array.isArray(body.detail)) {
-                        msg = body.detail.map(e => e.msg || JSON.stringify(e)).join(' | ');
-                    } else {
-                        msg = body.detail;
-                    }
-                } else {
-                    msg = JSON.stringify(body);
-                }
-            } catch(e) {}
-            err.textContent = `❌ ${res.status}: ${msg}`;
-            err.classList.remove('hidden');
-        }
-    } catch(e) {
-        const err = document.getElementById('setupError');
-        err.textContent = '⚠️ Impossible de joindre le serveur : ' + e.message;
-        err.classList.remove('hidden');
-    }
-}
-
-async function handleLogin() {
-    const user = document.getElementById('loginUser').value;
-    const pass = document.getElementById('loginPass').value;
-    const errEl = document.getElementById('loginError');
-    errEl.classList.add('hidden');
-    try {
-        const res = await fetch(`${API_URL}/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username: user, password: pass })
-        });
-        if (!res.ok) {
-            let msg = 'Identifiants incorrects';
-            try { const body = await res.json(); msg = body.detail || msg; } catch(e) {}
-            errEl.textContent = msg;
-            errEl.classList.remove('hidden');
-            authHeader = null;
-            return;
-        }
-        const data = await res.json();
-        authHeader   = 'Bearer ' + data.access_token;
-        refreshToken = data.refresh_token;
-        localStorage.setItem('paperfree_auth',    authHeader);
-        localStorage.setItem('paperfree_refresh', refreshToken);
-        showSection('app');
-        loadDocuments();
-        loadSettings();
-    } catch(e) {
-        errEl.textContent = '⚠️ Erreur réseau : ' + e.message;
-        errEl.classList.remove('hidden');
-        authHeader = null;
-    }
-}
-
-function logout() {
-    localStorage.removeItem('paperfree_auth');
-    localStorage.removeItem('paperfree_refresh');
-    authHeader   = null;
-    refreshToken = null;
-    checkStatus();
-}
-
-// ─── Tabs ─────────────────────────────────────────────────────────────────────
-function showTab(name) {
-    document.getElementById('tabDocs').classList.toggle('hidden',      name !== 'docs');
-    document.getElementById('tabClasseur').classList.toggle('hidden',  name !== 'classeur');
-    document.getElementById('tabEmail').classList.toggle('hidden',     name !== 'email');
-    document.getElementById('tabSettings').classList.toggle('hidden',  name !== 'settings');
-    document.getElementById('btnDocs').className     = 'text-sm px-3 py-1 rounded ' + (name==='docs'     ? 'tab-active' : 'text-gray-500');
-    document.getElementById('btnClasseur').className = 'text-sm px-3 py-1 rounded ' + (name==='classeur' ? 'tab-active' : 'text-gray-500');
-    document.getElementById('btnEmail').className    = 'text-sm px-3 py-1 rounded ' + (name==='email'    ? 'tab-active' : 'text-gray-500');
-    document.getElementById('btnSettings').className = 'text-sm px-3 py-1 rounded ' + (name==='settings' ? 'tab-active' : 'text-gray-500');
-    if (name === 'email')    { loadEmailFolders(); loadEmails(); loadEmailLogs(); }
-    if (name === 'classeur') { renderClasseur(); }
-}
-
-// ─── Documents ────────────────────────────────────────────────────────────────
-const CATEGORY_COLORS = {
-    'Facture':'bg-orange-100 text-orange-700','Impôts':'bg-red-100 text-red-700',
-    'Santé':'bg-green-100 text-green-700','Banque':'bg-blue-100 text-blue-700',
-    'Contrat':'bg-purple-100 text-purple-700','Assurance':'bg-yellow-100 text-yellow-700',
-    'Travail':'bg-indigo-100 text-indigo-700','Courrier':'bg-gray-100 text-gray-700',
-    'Autre':'bg-gray-100 text-gray-500',
-};
-
-function renderDocList(docs) {
-    const el = document.getElementById('docList');
-    if (!docs.length) { el.innerHTML = '<p class="text-gray-400 text-sm">Aucun document.</p>'; return; }
-    el.innerHTML = docs.map(d => {
-        const color = CATEGORY_COLORS[d.category] || 'bg-gray-100 text-gray-500';
-        const processing = !d.category;
-        return `<div onclick='openDoc(${d.id})'
-            class='p-3 rounded-lg border cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition ${currentDocId===d.id?"border-blue-400 bg-blue-50":"border-gray-200"}'>
-            <div class='flex items-start justify-between gap-2'>
-                <span class='text-sm font-medium text-gray-800 truncate flex-1'>${d.filename}</span>
-                ${processing
-                    ? `<span class='meta-badge bg-gray-100 text-gray-400 animate-pulse'>⏳</span>`
-                    : `<span class='meta-badge ${color}'>${d.category}</span>`}
-            </div>
-            ${d.summary ? `<p class='text-xs text-gray-500 mt-1 truncate'>${d.summary}</p>` : ''}
-            ${d.issuer  ? `<p class='text-xs text-gray-400 mt-0.5'>${d.issuer}</p>` : ''}
-            <p class='text-xs text-gray-300 mt-1'>${new Date(d.created_at).toLocaleDateString('fr-CA')}</p>
-        </div>`;
-    }).join('');
-}
-
-async function loadDocuments() {
-    try {
-        const res = await fetch(`${API_URL}/documents`, { headers: { 'Authorization': authHeader } });
-        if (res.status === 401) return logout();
-        allDocs = await res.json();
-        renderDocList(allDocs);
-        // Rafraîchir le classeur si l'onglet est actif
-        if (!document.getElementById('tabClasseur').classList.contains('hidden')) {
-            renderClasseur();
-        }
-    } catch(e) {}
-}
-
-// ─── Détail document ──────────────────────────────────────────────────────────
-async function openDoc(id) {
-    currentDocId = id;
-    renderDocList(allDocs); // update selection highlight
-
-    const res = await fetch(`${API_URL}/documents/${id}`, { headers: { 'Authorization': authHeader } });
-    const doc = await res.json();
-
-    // Merge form_data overrides
-    let formData = {};
-    try { if (doc.form_data) formData = JSON.parse(doc.form_data); } catch(e) {}
-
-    const isPdf = doc.filename.toLowerCase().endsWith('.pdf');
-    const hasPdfVersion = !!doc.pdf_filename;  // image convertie en PDF côté backend
-    const fileUrl = `${API_URL}/documents/${id}/file`;
-    const pdfUrl  = `${API_URL}/documents/${id}/pdf`;
-    const color = CATEGORY_COLORS[doc.category] || 'bg-gray-100 text-gray-500';
-
-    document.getElementById('detailPanel').innerHTML = `
-        <div class='flex items-start justify-between mb-4 gap-2'>
-            <div class='flex-1 min-w-0'>
-                <h2 class='text-lg font-bold text-gray-800 truncate'>${doc.filename}</h2>
-                <div class='flex flex-wrap gap-2 mt-1'>
-                    ${doc.category ? `<span class='meta-badge ${color}'>${doc.category}</span>` : ''}
-                    ${doc.issuer   ? `<span class='meta-badge bg-gray-100 text-gray-600'>🏢 ${doc.issuer}</span>` : ''}
-                    ${doc.doc_date ? `<span class='meta-badge bg-blue-50 text-blue-600'>📅 ${doc.doc_date}</span>` : ''}
-                    ${doc.amount   ? `<span class='meta-badge bg-green-50 text-green-700'>💶 ${doc.amount}</span>` : ''}
-                    ${(() => {
-                        let sources = doc.pipeline_sources;
-                        try { if (typeof sources === 'string') sources = JSON.parse(sources); } catch(e) { sources = null; }
-                        if (!sources || !sources.length) return '';
-                        const hasVision = sources.includes('vision');
-                        const hasOcr    = sources.includes('ocr+llm');
-                        if (hasVision && hasOcr)
-                            return `<span class='meta-badge bg-purple-100 text-purple-700' title='Double voie : vision + OCR fusionnés'>🔀 Vision+OCR</span>`;
-                        if (hasVision)
-                            return `<span class='meta-badge bg-purple-100 text-purple-700' title='Analysé par vision multimodale'>👁 Vision</span>`;
-                        return `<span class='meta-badge bg-gray-100 text-gray-500' title='Analysé par OCR + LLM'>📝 OCR+LLM</span>`;
-                    })()}
-                </div>
-            </div>
-            <div class='flex gap-2 flex-shrink-0'>
-                <a href='${fileUrl}' target='_blank'
-                    class='text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded font-medium'>⬇ Télécharger</a>
-                ${hasPdfVersion ? `<a href='${pdfUrl}' target='_blank'
-                    class='text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded font-medium'>📄 PDF</a>` : ''}
-                <button onclick='deleteDoc(${doc.id})'
-                    class='text-xs bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded font-medium'>🗑 Supprimer</button>
-            </div>
-        </div>
-
-        <!-- Onglets -->
-        <div class='flex gap-4 border-b mb-4 text-sm'>
-            <button onclick='showDocTab("preview")'  id='dtPreview'  class='pb-2 tab-active'>Aperçu</button>
-            <button onclick='showDocTab("ocr")'      id='dtOcr'      class='pb-2 text-gray-500'>Texte OCR</button>
-            <button onclick='showDocTab("form")'     id='dtForm'     class='pb-2 text-gray-500'>📝 Formulaire</button>
-        </div>
-
-        <!-- Aperçu -->
-        <div id='dtTabPreview'>
-            ${isPdf || hasPdfVersion
-                ? `<iframe src='${isPdf ? fileUrl : pdfUrl}#toolbar=0&navpanes=0'
-                       id='pdfViewer'
-                       style='width:100%;height:500px;border:none;border-radius:8px;'
-                       title='Aperçu PDF'>
-                   </iframe>
-                   <p class='text-xs text-gray-400 mt-1 text-center'>
-                       <a href='${isPdf ? fileUrl : pdfUrl}' class='text-blue-500 underline' target='_blank'>↗ Ouvrir dans un nouvel onglet</a>
-                   </p>`
-                : `<img src='${fileUrl}' class='max-w-full rounded border' alt='${doc.filename}'
-                    onerror="this.outerHTML='<p class=text-gray-400 text-sm>Aperçu indisponible.</p>'">`
-            }
-        </div>
-
-        <!-- OCR -->
-        <div id='dtTabOcr' class='hidden'>
-            ${doc.content
-                ? `<pre class='text-xs text-gray-700 bg-gray-50 rounded p-4 overflow-auto max-h-[55vh] whitespace-pre-wrap font-mono'>${escHtml(doc.content)}</pre>`
-                : `<p class='text-gray-400 text-sm'>Texte non encore extrait ou document en cours de traitement.</p>`}
-        </div>
-
-        <!-- Formulaire -->
-        <div id='dtTabForm' class='hidden'>
-            <p class='text-xs text-gray-400 mb-3'>Champs pré-remplis par le LLM — éditables et sauvegardables.</p>
-            <div class='grid grid-cols-2 gap-3 mb-4'>
-                ${formField('Catégorie','category', formData.category||doc.category||'')}
-                ${formField('Émetteur','issuer', formData.issuer||doc.issuer||'')}
-                ${formField('Date','doc_date', formData.doc_date||doc.doc_date||'')}
-                ${formField('Montant','amount', formData.amount||doc.amount||'')}
-            </div>
-            <div class='mb-4'>
-                <label class='block text-xs font-medium text-gray-600 mb-1'>Résumé</label>
-                <textarea id='form_summary' rows='2'
-                    class='w-full p-2 border rounded text-sm'>${escHtml(formData.summary||doc.summary||'')}</textarea>
-            </div>
-            <div class='mb-4'>
-                <label class='block text-xs font-medium text-gray-600 mb-1'>Notes personnelles</label>
-                <textarea id='form_notes' rows='3'
-                    class='w-full p-2 border rounded text-sm'>${escHtml(formData.notes||'')}</textarea>
-            </div>
-            <button onclick='saveForm(${doc.id})'
-                class='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium'>
-                💾 Sauvegarder
-            </button>
-            <span id='formSaved' class='hidden text-green-600 text-sm ml-3'>✓ Sauvegardé</span>
-        </div>
-    `;
-}
-
-function formField(label, key, value) {
-    return `<div>
-        <label class='block text-xs font-medium text-gray-600 mb-1'>${label}</label>
-        <input type='text' id='form_${key}' value='${escAttr(value)}'
-            class='w-full p-2 border rounded text-sm'>
-    </div>`;
-}
-
-function showDocTab(name) {
-    ['preview','ocr','form'].forEach(t => {
-        document.getElementById('dtTab'+cap(t)).classList.toggle('hidden', t!==name);
-        const btn = document.getElementById('dt'+cap(t));
-        btn.className = 'pb-2 ' + (t===name ? 'tab-active' : 'text-gray-500');
-    });
-}
-
-async function saveForm(docId) {
-    const data = {
-        category: document.getElementById('form_category').value,
-        issuer:   document.getElementById('form_issuer').value,
-        doc_date: document.getElementById('form_doc_date').value,
-        amount:   document.getElementById('form_amount').value,
-        summary:  document.getElementById('form_summary').value,
-        notes:    document.getElementById('form_notes').value,
-    };
-    await fetch(`${API_URL}/documents/${docId}/form`, {
-        method: 'PATCH',
-        headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-    });
-    const el = document.getElementById('formSaved');
-    el.classList.remove('hidden');
-    setTimeout(() => el.classList.add('hidden'), 2000);
-    loadDocuments(); // rafraîchir la liste
-}
-
-async function deleteDoc(docId) {
-    if (!confirm('Supprimer ce document ?')) return;
-    await fetch(`${API_URL}/documents/${docId}`, {
-        method: 'DELETE', headers: { 'Authorization': authHeader }
-    });
-    currentDocId = null;
-    document.getElementById('detailPanel').innerHTML =
-        '<div class="flex items-center justify-center h-64 text-gray-300 flex-col gap-2"><span class="text-5xl">📄</span><span class="text-sm">Sélectionnez un document</span></div>';
-    loadDocuments();
-}
-
-// ─── Recherche ────────────────────────────────────────────────────────────────
-async function doSearch(mode) {
-    const q = document.getElementById('searchInput').value.trim();
-    if (!q) { loadDocuments(); return; }
-
-    const res = await fetch(`${API_URL}/search?q=${encodeURIComponent(q)}&mode=${mode}`, {
-        headers: { 'Authorization': authHeader }
-    });
-    const data = await res.json();
-
-    allDocs = data.results;
-    renderDocList(allDocs);
-
-    const llmBox = document.getElementById('llmAnswer');
-    if (mode === 'llm' && data.llm_answer) {
-        llmBox.textContent = data.llm_answer;
-        llmBox.classList.remove('hidden');
-    } else {
-        llmBox.classList.add('hidden');
-    }
-}
-
-// ─── Classeur ─────────────────────────────────────────────────────────────────
-
-// Ordre d'affichage des catégories + icônes
-const CATEGORY_ORDER = [
-    'Facture', 'Impôts', 'Banque', 'Assurance',
-    'Travail', 'Santé', 'Contrat', 'Courrier', 'Autre'
-];
-const CATEGORY_ICONS = {
-    'Facture':'🧾','Impôts':'📋','Santé':'💊','Banque':'🏦',
-    'Contrat':'📝','Assurance':'🛡','Travail':'💼','Courrier':'✉️','Autre':'📁',
-};
-// Catégories ouvertes dans l'accordéon (persistance dans la session)
-const _openCategories = new Set();
-
-function _sortKey(doc, sortBy) {
-    if (sortBy === 'doc_date')   return doc.doc_date   || doc.created_at || '';
-    if (sortBy === 'created_at') return doc.created_at || '';
-    if (sortBy === 'filename')   return (doc.filename  || '').toLowerCase();
-    return '';
-}
-
-function _formatDate(str) {
-    if (!str) return '—';
-    // ISO date YYYY-MM-DD ou datetime
-    const d = new Date(str);
-    if (isNaN(d)) return str;
-    return d.toLocaleDateString('fr-CA');
-}
-
-function renderClasseur() {
-    const sortBy    = document.getElementById('classeurSort')?.value || 'doc_date';
-    const container = document.getElementById('classeurAccordion');
-    if (!container) return;
-
-    // Grouper par catégorie
-    const groups = {};
-    for (const doc of allDocs) {
-        const cat = doc.category || 'Autre';
-        if (!groups[cat]) groups[cat] = [];
-        groups[cat].push(doc);
-    }
-
-    // Trier chaque groupe
-    const descSort = sortBy !== 'filename'; // dates → desc, nom → asc
-    for (const cat in groups) {
-        groups[cat].sort((a, b) => {
-            const ka = _sortKey(a, sortBy);
-            const kb = _sortKey(b, sortBy);
-            return descSort ? kb.localeCompare(ka) : ka.localeCompare(kb);
-        });
-    }
-
-    // Construire l'ordre des catégories (connues d'abord, puis inconnues)
-    const unknownCats = Object.keys(groups).filter(c => !CATEGORY_ORDER.includes(c)).sort();
-    const orderedCats = [...CATEGORY_ORDER, ...unknownCats].filter(c => groups[c]);
-
-    if (!orderedCats.length) {
-        container.innerHTML = '<p class="text-sm text-gray-400 text-center p-8">Aucun document classé.</p>';
-        return;
-    }
-
-    container.innerHTML = orderedCats.map(cat => {
-        const docs  = groups[cat];
-        const icon  = CATEGORY_ICONS[cat] || '📁';
-        const color = CATEGORY_COLORS[cat] || 'bg-gray-100 text-gray-500';
-        const isOpen = _openCategories.has(cat) || _openCategories.size === 0 && cat === orderedCats[0];
-
-        const rows = docs.map(doc => {
-            const dateSrc = sortBy === 'created_at' ? doc.created_at : (doc.doc_date || doc.created_at);
-            const dateStr = _formatDate(dateSrc);
-            const processing = !doc.category;
-            return `<div class='classeur-item' id='citem-${doc.id}' onclick='openClasseurDoc(${doc.id})'>
-                <div class='flex-1 min-w-0'>
-                    <p class='text-sm font-medium text-gray-800 truncate'>${escHtml(doc.filename)}</p>
-                    ${doc.issuer  ? `<p class='text-xs text-gray-400 mt-0.5 truncate'>🏢 ${escHtml(doc.issuer)}</p>` : ''}
-                    ${doc.summary ? `<p class='text-xs text-gray-400 mt-0.5 truncate'>${escHtml(doc.summary)}</p>` : ''}
-                    ${doc.amount  ? `<span class='text-xs text-green-600 font-medium'>💶 ${escHtml(doc.amount)}</span>` : ''}
-                    ${processing  ? `<span class='text-xs text-gray-400 animate-pulse'>⏳ traitement...</span>` : ''}
-                </div>
-                <div class='classeur-date-col'>
-                    ${doc.doc_date ? `<span class='font-medium text-gray-600'>${_formatDate(doc.doc_date)}</span>` : ''}
-                    ${!doc.doc_date && doc.created_at ? `<span class='italic'>${_formatDate(doc.created_at)}</span>` : ''}
-                </div>
-            </div>`;
-        }).join('');
-
-        return `<div class='accordion-section' data-cat='${escAttr(cat)}'>
-            <div class='accordion-header ${isOpen ? "open" : ""}' onclick='toggleAccordion(this)'>
-                <div class='flex items-center gap-2'>
-                    <span class='text-lg'>${icon}</span>
-                    <span class='font-semibold text-gray-700 text-sm'>${escHtml(cat)}</span>
-                    <span class='meta-badge ${color} ml-1'>${docs.length}</span>
-                </div>
-                <span class='accordion-chevron'>▶</span>
-            </div>
-            <div class='accordion-body ${isOpen ? "" : "closed"}' style='max-height: ${isOpen ? docs.length * 80 + "px" : "0"}'>
-                ${rows}
-            </div>
-        </div>`;
-    }).join('');
-}
-
-function toggleAccordion(header) {
-    const cat  = header.closest('.accordion-section').dataset.cat;
-    const body = header.nextElementSibling;
-    const isNowOpen = !header.classList.contains('open');
-
-    header.classList.toggle('open', isNowOpen);
-    body.classList.toggle('closed', !isNowOpen);
-
-    if (isNowOpen) {
-        // Calculer la hauteur naturelle des items
-        const rows = body.querySelectorAll('.classeur-item').length;
-        body.style.maxHeight = (rows * 80 + 20) + 'px';
-        body.style.opacity   = '1';
-        _openCategories.add(cat);
-    } else {
-        body.style.maxHeight = '0';
-        body.style.opacity   = '0';
-        _openCategories.delete(cat);
-    }
-}
-
-let _classeurCurrentDocId = null;
-
-async function openClasseurDoc(id) {
-    // Mise en évidence de l'item sélectionné
-    document.querySelectorAll('.classeur-item').forEach(el => el.classList.remove('active'));
-    const item = document.getElementById('citem-' + id);
-    if (item) item.classList.add('active');
-
-    _classeurCurrentDocId = id;
-
-    const res = await fetch(`${API_URL}/documents/${id}`, { headers: { 'Authorization': authHeader } });
-    const doc = await res.json();
-
-    let formData = {};
-    try { if (doc.form_data) formData = JSON.parse(doc.form_data); } catch(e) {}
-
-    const isPdf       = doc.filename.toLowerCase().endsWith('.pdf');
-    const hasPdfVersion = !!doc.pdf_filename;
-    const fileUrl     = `${API_URL}/documents/${id}/file`;
-    const pdfUrl      = `${API_URL}/documents/${id}/pdf`;
-    const color       = CATEGORY_COLORS[doc.category] || 'bg-gray-100 text-gray-500';
-    const panel       = document.getElementById('classeurDetailPanel');
-
-    panel.innerHTML = `
-        <div class='flex items-start justify-between mb-4 gap-2'>
-            <div class='flex-1 min-w-0'>
-                <h2 class='text-lg font-bold text-gray-800 truncate'>${escHtml(doc.filename)}</h2>
-                <div class='flex flex-wrap gap-2 mt-1'>
-                    ${doc.category ? `<span class='meta-badge ${color}'>${escHtml(doc.category)}</span>` : ''}
-                    ${doc.issuer   ? `<span class='meta-badge bg-gray-100 text-gray-600'>🏢 ${escHtml(doc.issuer)}</span>` : ''}
-                    ${doc.doc_date ? `<span class='meta-badge bg-blue-50 text-blue-600'>📅 ${doc.doc_date}</span>` : ''}
-                    ${doc.amount   ? `<span class='meta-badge bg-green-50 text-green-700'>💶 ${escHtml(doc.amount)}</span>` : ''}
-                    ${(() => {
-                        let sources = doc.pipeline_sources;
-                        try { if (typeof sources === 'string') sources = JSON.parse(sources); } catch(e) { sources = null; }
-                        if (!sources || !sources.length) return '';
-                        if (sources.includes('vision') && sources.includes('ocr+llm'))
-                            return `<span class='meta-badge bg-purple-100 text-purple-700' title='Double voie : vision + OCR fusionnés'>🔀 Vision+OCR</span>`;
-                        if (sources.includes('vision'))
-                            return `<span class='meta-badge bg-purple-100 text-purple-700'>👁 Vision</span>`;
-                        return `<span class='meta-badge bg-gray-100 text-gray-500'>📝 OCR+LLM</span>`;
-                    })()}
-                </div>
-            </div>
-            <div class='flex gap-2 flex-shrink-0'>
-                <a href='${fileUrl}' target='_blank'
-                    class='text-xs bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded font-medium'>⬇ Télécharger</a>
-                ${hasPdfVersion ? `<a href='${pdfUrl}' target='_blank'
-                    class='text-xs bg-blue-50 hover:bg-blue-100 text-blue-700 px-3 py-1.5 rounded font-medium'>📄 PDF</a>` : ''}
-                <button onclick='deleteClasseurDoc(${doc.id})'
-                    class='text-xs bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded font-medium'>🗑</button>
-            </div>
-        </div>
-
-        <div class='flex gap-4 border-b mb-4 text-sm'>
-            <button onclick='showClasseurTab("preview")' id='cdPreview' class='pb-2 tab-active'>Aperçu</button>
-            <button onclick='showClasseurTab("ocr")'     id='cdOcr'     class='pb-2 text-gray-500'>Texte OCR</button>
-            <button onclick='showClasseurTab("form")'    id='cdForm'    class='pb-2 text-gray-500'>📝 Formulaire</button>
-        </div>
-
-        <div id='cdTabPreview'>
-            ${isPdf || hasPdfVersion
-                ? `<iframe src='${isPdf ? fileUrl : pdfUrl}#toolbar=0&navpanes=0'
-                       style='width:100%;height:500px;border:none;border-radius:8px;'
-                       title='Aperçu PDF'>
-                   </iframe>
-                   <p class='text-xs text-gray-400 mt-1 text-center'>
-                       <a href='${isPdf ? fileUrl : pdfUrl}' class='text-blue-500 underline' target='_blank'>↗ Ouvrir dans un nouvel onglet</a>
-                   </p>`
-                : `<img src='${fileUrl}' class='max-w-full rounded border' alt='${escAttr(doc.filename)}'>`}
-        </div>
-
-        <div id='cdTabOcr' class='hidden'>
-            ${doc.content
-                ? `<pre class='text-xs text-gray-700 bg-gray-50 rounded p-4 overflow-auto max-h-[55vh] whitespace-pre-wrap font-mono'>${escHtml(doc.content)}</pre>`
-                : `<p class='text-gray-400 text-sm'>Texte non disponible.</p>`}
-        </div>
-
-        <div id='cdTabForm' class='hidden'>
-            <p class='text-xs text-gray-400 mb-3'>Champs pré-remplis par le LLM — éditables et sauvegardables.</p>
-            <div class='grid grid-cols-2 gap-3 mb-4'>
-                ${formField('Catégorie','cd_category', formData.category||doc.category||'')}
-                ${formField('Émetteur','cd_issuer', formData.issuer||doc.issuer||'')}
-                ${formField('Date','cd_doc_date', formData.doc_date||doc.doc_date||'')}
-                ${formField('Montant','cd_amount', formData.amount||doc.amount||'')}
-            </div>
-            <div class='mb-4'>
-                <label class='block text-xs font-medium text-gray-600 mb-1'>Résumé</label>
-                <textarea id='cd_summary' rows='2' class='w-full p-2 border rounded text-sm'>${escHtml(formData.summary||doc.summary||'')}</textarea>
-            </div>
-            <div class='mb-4'>
-                <label class='block text-xs font-medium text-gray-600 mb-1'>Notes personnelles</label>
-                <textarea id='cd_notes' rows='3' class='w-full p-2 border rounded text-sm'>${escHtml(formData.notes||'')}</textarea>
-            </div>
-            <button onclick='saveClasseurForm(${doc.id})'
-                class='bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded text-sm font-medium'>
-                💾 Sauvegarder
-            </button>
-            <span id='cdFormSaved' class='hidden text-green-600 text-sm ml-3'>✓ Sauvegardé</span>
-        </div>
-    `;
-}
-
-function showClasseurTab(name) {
-    ['preview','ocr','form'].forEach(t => {
-        document.getElementById('cdTab'+cap(t)).classList.toggle('hidden', t!==name);
-        const btn = document.getElementById('cd'+cap(t));
-        btn.className = 'pb-2 ' + (t===name ? 'tab-active' : 'text-gray-500');
-    });
-}
-
-async function saveClasseurForm(docId) {
-    const data = {
-        category: document.getElementById('cd_category').value,
-        issuer:   document.getElementById('cd_issuer').value,
-        doc_date: document.getElementById('cd_doc_date').value,
-        amount:   document.getElementById('cd_amount').value,
-        summary:  document.getElementById('cd_summary').value,
-        notes:    document.getElementById('cd_notes').value,
-    };
-    await fetch(`${API_URL}/documents/${docId}/form`, {
-        method: 'PATCH',
-        headers: { 'Authorization': authHeader, 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-    });
-    const el = document.getElementById('cdFormSaved');
-    el.classList.remove('hidden');
-    setTimeout(() => el.classList.add('hidden'), 2000);
-    // Rafraîchir les deux vues
-    await loadDocuments();
-    renderClasseur();
-}
-
-async function deleteClasseurDoc(docId) {
-    if (!confirm('Supprimer ce document ?')) return;
-    await fetch(`${API_URL}/documents/${docId}`, {
-        method: 'DELETE', headers: { 'Authorization': authHeader }
-    });
-    _classeurCurrentDocId = null;
-    document.getElementById('classeurDetailPanel').innerHTML =
-        '<div class="flex items-center justify-center h-64 text-gray-300 flex-col gap-2"><span class="text-5xl">🗂</span><span class="text-sm">Sélectionnez un document dans le classeur</span></div>';
-    await loadDocuments();
-    renderClasseur();
-}
-
-// ─── Settings ─────────────────────────────────────────────────────────────────
-
-// Backends LLM connus — chargés depuis l'API au démarrage
-let _backends = [];
-
-async function loadBackends() {
-    try {
-        const res = await fetch(`${API_URL}/backends`);
-        if (!res.ok) return;
-        const data = await res.json();
-        _backends = data.backends || [];
-        const container = document.getElementById('backendButtons');
-        if (!container) return;
-        const ICONS = { lm_studio: '🖥', ollama: '🦙', openai: '🤖', gemini: '✨' };
-        container.innerHTML = _backends.map(b => `
-            <button onclick='applyBackend("${b.id}")'
-                class='backend-btn border-2 border-gray-200 rounded-xl p-2 text-center hover:border-blue-400 hover:bg-blue-50 transition text-xs'>
-                <div class='text-lg'>${ICONS[b.id] || '⚙️'}</div>
-                <div class='font-semibold text-gray-700 mt-0.5'>${b.label}</div>
-            </button>`).join('');
-    } catch(e) {}
-}
-
-function applyBackend(id) {
-    const b = _backends.find(x => x.id === id);
-    if (!b) return;
-    document.getElementById('settingLlmUrl').value   = b.base_url;
-    document.getElementById('settingLlmKey').value   = b.api_key || '';
-    document.getElementById('settingLlmModel').value = b.models[0] || '';
-
-    // Mettre à jour les suggestions de modèles
-    const sel = document.getElementById('modelSuggestions');
-    if (b.models.length > 1) {
-        sel.innerHTML = '<option value="">— suggestions —</option>' +
-            b.models.map(m => `<option value="${m}">${m}</option>`).join('');
-        sel.classList.remove('hidden');
-    } else {
-        sel.classList.add('hidden');
-    }
-
-    // Hint pour la clé API
-    const hint = document.getElementById('settingLlmKeyHint');
-    if (b.hint) {
-        hint.textContent = '💡 ' + b.hint;
-        hint.classList.remove('hidden');
-    } else {
-        hint.classList.add('hidden');
-    }
-
-    // Mise en évidence du bouton actif
-    document.querySelectorAll('.backend-btn').forEach(btn => {
-        btn.classList.remove('border-blue-500', 'bg-blue-50');
-        btn.classList.add('border-gray-200');
-    });
-    const active = document.querySelector(`.backend-btn[onclick='applyBackend("${id}")']`);
-    if (active) {
-        active.classList.remove('border-gray-200');
-        active.classList.add('border-blue-500', 'bg-blue-50');
-    }
-}
-
-function applyModelSuggestion() {
-    const sel = document.getElementById('modelSuggestions');
-    if (sel.value) document.getElementById('settingLlmModel').value = sel.value;
-}
-
-async function loadSettings() {
-    const res = await fetch(`${API_URL}/settings`, { headers: { 'Authorization': authHeader } });
-    const s = await res.json();
-    document.getElementById('settingLlmUrl').value   = s.llm_base_url || '';
-    document.getElementById('settingLlmModel').value = s.llm_model    || '';
-    document.getElementById('settingLlmKey').value   = s.llm_api_key  || '';
-    // Charger les backends et surligner l'actif
-    await loadBackends();
-    _highlightActiveBackend(s.llm_base_url || '');
-    // OCR / Vision
-    document.getElementById('settingOcrCorrection').checked = (s.ocr_llm_correction !== 'false');
-    const thr = parseInt(s.ocr_correction_threshold || '80');
-    document.getElementById('settingOcrThreshold').value = thr;
-    document.getElementById('ocrThresholdVal').textContent = thr + '%';
-    document.getElementById('settingVisionEnabled').checked = (s.llm_vision_enabled === 'true');
-    document.getElementById('settingVisionProvider').value  = s.llm_vision_provider || 'local';
-    document.getElementById('settingVisionModel').value     = s.llm_vision_model    || '';
-    document.getElementById('settingVisionApiKey').value    = s.llm_vision_api_key  || '';
-    document.getElementById('settingVisionBaseUrl').value   = s.llm_vision_base_url || '';
-    document.getElementById('settingOcrVisionFusion').checked = (s.ocr_vision_fusion !== 'false');
-    toggleVisionPanel();
-    toggleVisionProvider();
-    // Email
-    document.getElementById('settingEmailHost').value           = s.email_host                 || '';
-    document.getElementById('settingEmailUser').value           = s.email_user                 || '';
-    document.getElementById('settingEmailPass').value           = s.email_password             || '';
-    document.getElementById('settingEmailFolder').value         = s.email_folder               || 'INBOX';
-    document.getElementById('settingEmailTreated').value        = s.email_treated_folder       || 'PaperFree-Traité';
-    document.getElementById('settingEmailAttachInterval').value = s.email_attach_interval_min  || '15';
-    document.getElementById('settingEmailPurgeInterval').value  = s.email_purge_interval_hours || '24';
-    document.getElementById('settingEmailPromoDays').value      = s.email_promo_days           || '7';
-    // OAuth Microsoft
-    document.getElementById('settingOauthClientId').value     = s.oauth_client_id     || '';
-    document.getElementById('settingOauthClientSecret').value = s.oauth_client_secret || '';
-    document.getElementById('settingOauthRedirectUri').value  = s.oauth_redirect_uri  || 'http://localhost:8000/email/oauth/callback';
-    // OAuth Google
-    document.getElementById('settingGoogleClientId').value     = s.google_client_id     || '';
-    document.getElementById('settingGoogleClientSecret').value = s.google_client_secret || '';
-    document.getElementById('settingGoogleRedirectUri').value  = s.google_redirect_uri  || 'http://localhost:8000/email/oauth/google/callback';
-    refreshOauthStatus();
-}
-
-function _highlightActiveBackend(currentUrl) {
-    if (!currentUrl || !_backends.length) return;
-    const match = _backends.find(b => currentUrl.startsWith(b.base_url.split('/v1')[0]));
-    if (!match) return;
-    document.querySelectorAll('.backend-btn').forEach(btn => {
-        btn.classList.remove('border-blue-500', 'bg-blue-50');
-        btn.classList.add('border-gray-200');
-    });
-    const active = document.querySelector(`.backend-btn[onclick='applyBackend("${match.id}")']`);
-    if (active) {
-        active.classList.remove('border-gray-200');
-        active.classList.add('border-blue-500', 'bg-blue-50');
-    }
-}
-
-async function saveOcrVisionSettings() {
-    const pairs = [
-        ['ocr_llm_correction',       document.getElementById('settingOcrCorrection').checked ? 'true' : 'false'],
-        ['ocr_correction_threshold', document.getElementById('settingOcrThreshold').value],
-        ['llm_vision_enabled',       document.getElementById('settingVisionEnabled').checked ? 'true' : 'false'],
-        ['llm_vision_provider',      document.getElementById('settingVisionProvider').value],
-        ['llm_vision_model',         document.getElementById('settingVisionModel').value],
-        ['llm_vision_api_key',       document.getElementById('settingVisionApiKey').value],
-        ['llm_vision_base_url',      document.getElementById('settingVisionBaseUrl').value],
-        ['ocr_vision_fusion',        document.getElementById('settingOcrVisionFusion').checked ? 'true' : 'false'],
-    ];
-    for (const [k, v] of pairs) {
-        await fetch(`${API_URL}/settings?key=${k}&value=${encodeURIComponent(v)}`,
-            { method: 'POST', headers: { 'Authorization': authHeader } });
-    }
-    const el = document.getElementById('ocrVisionSaved');
-    el.classList.remove('hidden');
-    setTimeout(() => el.classList.add('hidden'), 2500);
-}
-
-function toggleVisionPanel() {
-    const enabled = document.getElementById('settingVisionEnabled').checked;
-    document.getElementById('visionPanel').classList.toggle('hidden', !enabled);
-}
-
-function toggleVisionProvider() {
-    const provider = document.getElementById('settingVisionProvider').value;
-    const isLocal  = provider === 'local';
-    document.getElementById('visionLocalNote').classList.toggle('hidden', !isLocal);
-    document.getElementById('visionExternalNote').classList.toggle('hidden', isLocal);
-    document.getElementById('visionBaseUrlField').classList.toggle('hidden', !isLocal);
-    // Gemini : clé API requise, pas d'URL custom
-    if (provider === 'gemini') {
-        document.getElementById('visionExternalNote').classList.remove('hidden');
-        document.getElementById('visionBaseUrlField').classList.add('hidden');
-    }
-}
-
-async function saveSettings() {
-    const pairs = [
-        ['llm_base_url', document.getElementById('settingLlmUrl').value],
-        ['llm_model',    document.getElementById('settingLlmModel').value],
-        ['llm_api_key',  document.getElementById('settingLlmKey').value],
-    ];
-    for (const [k, v] of pairs) {
-        await fetch(`${API_URL}/settings?key=${k}&value=${encodeURIComponent(v)}`,
-            { method: 'POST', headers: { 'Authorization': authHeader } });
-    }
-    const el = document.getElementById('settingsSaved');
-    el.classList.remove('hidden');
-    setTimeout(() => el.classList.add('hidden'), 2000);
-}
-
-async function saveEmailSettings() {
-    const pairs = [
-        ['email_host',                 document.getElementById('settingEmailHost').value],
-        ['email_user',                 document.getElementById('settingEmailUser').value],
-        ['email_password',             document.getElementById('settingEmailPass').value],
-        ['email_folder',               document.getElementById('settingEmailFolder').value],
-        ['email_treated_folder',       document.getElementById('settingEmailTreated').value],
-        ['email_attach_interval_min',  document.getElementById('settingEmailAttachInterval').value],
-        ['email_purge_interval_hours', document.getElementById('settingEmailPurgeInterval').value],
-        ['email_promo_days',           document.getElementById('settingEmailPromoDays').value],
-    ];
-    for (const [k, v] of pairs) {
-        await fetch(`${API_URL}/settings?key=${k}&value=${encodeURIComponent(v)}`,
-            { method: 'POST', headers: { 'Authorization': authHeader } });
-    }
-    const el = document.getElementById('emailSettingsSaved');
-    el.classList.remove('hidden');
-    setTimeout(() => el.classList.add('hidden'), 3000);
-}
-
-async function testEmailConnection() {
-    const el = document.getElementById('emailTestResult');
-    el.classList.remove('hidden');
-    el.textContent = '⏳ Test en cours...';
-    el.className = 'text-sm mt-1 text-blue-500';
-    try {
-        // Sauvegarder d'abord les paramètres courants
-        await saveEmailSettings();
-        const res = await fetch(`${API_URL}/email/test`, { headers: { 'Authorization': authHeader } });
-        const data = await res.json();
-        if (data.ok) {
-            el.textContent = `✅ Connexion réussie — ${data.folders_count} dossier(s) trouvé(s) — ${data.oauth ? 'OAuth2' : 'Auth basique'}`;
-            el.className = 'text-sm mt-1 text-green-600';
-            // Recharger les dossiers dans le sélecteur email
-            loadEmailFolders();
-        } else {
-            el.textContent = `❌ ${data.error || 'Connexion impossible'}`;
-            el.className = 'text-sm mt-1 text-red-600';
-        }
-    } catch(e) {
-        el.textContent = `❌ Erreur réseau : ${e.message}`;
-        el.className = 'text-sm mt-1 text-red-600';
-    }
-    setTimeout(() => el.classList.add('hidden'), 8000);
-}
-
-async function saveOauthSettings() {
-    const pairs = [
-        ['oauth_client_id',     document.getElementById('settingOauthClientId').value],
-        ['oauth_client_secret', document.getElementById('settingOauthClientSecret').value],
-        ['oauth_redirect_uri',  document.getElementById('settingOauthRedirectUri').value],
-    ];
-    for (const [k, v] of pairs) {
-        await fetch(`${API_URL}/settings?key=${k}&value=${encodeURIComponent(v)}`,
-            { method: 'POST', headers: { 'Authorization': authHeader } });
-    }
-    document.getElementById('oauthSettingsSaved').classList.remove('hidden');
-    setTimeout(() => document.getElementById('oauthSettingsSaved').classList.add('hidden'), 3000);
-}
-
-async function saveGoogleOauthSettings() {
-    const pairs = [
-        ['google_client_id',     document.getElementById('settingGoogleClientId').value],
-        ['google_client_secret', document.getElementById('settingGoogleClientSecret').value],
-        ['google_redirect_uri',  document.getElementById('settingGoogleRedirectUri').value],
-    ];
-    for (const [k, v] of pairs) {
-        await fetch(`${API_URL}/settings?key=${k}&value=${encodeURIComponent(v)}`,
-            { method: 'POST', headers: { 'Authorization': authHeader } });
-    }
-    document.getElementById('googleOauthSettingsSaved').classList.remove('hidden');
-    setTimeout(() => document.getElementById('googleOauthSettingsSaved').classList.add('hidden'), 3000);
-}
-
-async function refreshOauthStatus() {
-    try {
-        const res  = await fetch(`${API_URL}/email/oauth/status`, { headers: { 'Authorization': authHeader } });
-        if (!res.ok) return;
-        const data = await res.json();
-
-        // --- Microsoft ---
-        const ms = data.microsoft;
-        const elMs  = document.getElementById('oauthStatus');
-        const btnMsConnect    = document.getElementById('btnOauthConnect');
-        const btnMsDisconnect = document.getElementById('btnOauthDisconnect');
-        if (ms.connected) {
-            const exp = ms.expires_at ? new Date(ms.expires_at * 1000).toLocaleString('fr-CA') : '?';
-            elMs.innerHTML = `<span class='text-green-600'>✅ Connecté (${escHtml(ms.email_user)}) — expire ${exp}</span>`;
-            btnMsConnect.classList.add('hidden');
-            btnMsDisconnect.classList.remove('hidden');
-        } else if (ms.configured) {
-            elMs.innerHTML = `<span class='text-orange-500'>⚠️ Configuré mais non connecté</span>`;
-            btnMsConnect.classList.remove('hidden');
-            btnMsDisconnect.classList.add('hidden');
-        } else {
-            elMs.innerHTML = `<span class='text-gray-400'>Non configuré</span>`;
-            btnMsConnect.classList.remove('hidden');
-            btnMsDisconnect.classList.add('hidden');
-        }
-
-        // --- Google ---
-        const g = data.google;
-        const elG  = document.getElementById('googleOauthStatus');
-        const btnGConnect    = document.getElementById('btnGoogleConnect');
-        const btnGDisconnect = document.getElementById('btnGoogleDisconnect');
-        if (g.connected) {
-            const exp = g.expires_at ? new Date(g.expires_at * 1000).toLocaleString('fr-CA') : '?';
-            elG.innerHTML = `<span class='text-green-600'>✅ Connecté (${escHtml(g.email_user)}) — expire ${exp}</span>`;
-            btnGConnect.classList.add('hidden');
-            btnGDisconnect.classList.remove('hidden');
-        } else if (g.configured) {
-            elG.innerHTML = `<span class='text-orange-500'>⚠️ Configuré mais non connecté</span>`;
-            btnGConnect.classList.remove('hidden');
-            btnGDisconnect.classList.add('hidden');
-        } else {
-            elG.innerHTML = `<span class='text-gray-400'>Non configuré</span>`;
-            btnGConnect.classList.remove('hidden');
-            btnGDisconnect.classList.add('hidden');
-        }
-    } catch(e) {}
-}
-
-function startOauthFlow(provider) {
-    const urls = {
-        microsoft: `${API_URL}/email/oauth/start`,
-        google:    `${API_URL}/email/oauth/google/start`,
-    };
-    const popup = window.open(urls[provider], 'oauth_popup', 'width=540,height=660,resizable=yes,scrollbars=yes');
-    const handler = (event) => {
-        if (!event.data || event.data.provider !== provider) return;
-        window.removeEventListener('message', handler);
-        popup?.close();
-        if (event.data.type === 'oauth_success') {
-            const who = event.data.email ? ` (${event.data.email})` : '';
-            showEmailMsg(`✅ Compte ${provider === 'google' ? 'Gmail' : 'Outlook'} connecté${who} !`, 'green');
-            refreshOauthStatus();
-        } else if (event.data.type === 'oauth_error') {
-            showEmailMsg(`❌ Erreur OAuth ${provider} : ${event.data.error}`, 'red');
-        }
-    };
-    window.addEventListener('message', handler);
-    const interval = setInterval(() => {
-        if (popup?.closed) { clearInterval(interval); window.removeEventListener('message', handler); }
-    }, 1000);
-}
-
-async function oauthDisconnect(provider) {
-    const labels = { microsoft: 'Outlook/Hotmail', google: 'Gmail' };
-    if (!confirm(`Déconnecter le compte ${labels[provider]} ?`)) return;
-    const endpoints = {
-        microsoft: `${API_URL}/email/oauth/disconnect`,
-        google:    `${API_URL}/email/oauth/google/disconnect`,
-    };
-    await fetch(endpoints[provider], { method: 'POST', headers: { 'Authorization': authHeader } });
-    refreshOauthStatus();
-}
-
-// ─── Email ────────────────────────────────────────────────────────────────────
-const EMAIL_CATEGORY_COLORS = {
-    'Promotionnel': 'bg-orange-100 text-orange-700',
-    'Facture':      'bg-blue-100 text-blue-700',
-    'Notification': 'bg-yellow-100 text-yellow-700',
-    'Personnel':    'bg-green-100 text-green-700',
-    'Autre':        'bg-gray-100 text-gray-500',
-};
-
-async function loadEmailFolders() {
-    try {
-        const res = await fetch(`${API_URL}/email/folders`, { headers: { 'Authorization': authHeader } });
-        if (!res.ok) return;
-        const data = await res.json();
-        const sel = document.getElementById('emailFolderSelect');
-        const current = sel.value;
-        sel.innerHTML = '';
-        data.folders.forEach(f => {
-            const opt = document.createElement('option');
-            opt.value = f; opt.textContent = f;
-            if (f === current) opt.selected = true;
-            sel.appendChild(opt);
-        });
-    } catch(e) {}
-}
-
-async function loadEmails() {
-    const folder = document.getElementById('emailFolderSelect').value || 'INBOX';
-    document.getElementById('emailLoading').classList.remove('hidden');
-    document.getElementById('emailEmpty').classList.add('hidden');
-    document.getElementById('emailList').innerHTML = '';
-    document.getElementById('emailStats').classList.add('hidden');
-    try {
-        const res = await fetch(`${API_URL}/email/messages?folder=${encodeURIComponent(folder)}&limit=50`,
-            { headers: { 'Authorization': authHeader } });
-        document.getElementById('emailLoading').classList.add('hidden');
-        if (!res.ok) {
-            const err = await res.json();
-            document.getElementById('emailEmpty').textContent = `⚠️ ${err.detail || 'Erreur'}`;
-            document.getElementById('emailEmpty').classList.remove('hidden');
-            return;
-        }
-        const data = await res.json();
-        if (!data.messages.length) {
-            document.getElementById('emailEmpty').classList.remove('hidden');
-            return;
-        }
-        const unread = data.messages.filter(m => !m.is_read).length;
-        const withPJ = data.messages.filter(m => m.has_attachment).length;
-        const stats  = document.getElementById('emailStats');
-        stats.textContent = `${data.count} email(s) — ${unread} non lu(s) — ${withPJ} avec pièce(s) jointe(s)`;
-        stats.classList.remove('hidden');
-
-        const tbody = document.getElementById('emailList');
-        tbody.innerHTML = data.messages.map(m => {
-            const date = new Date(m.date);
-            const dateStr = isNaN(date) ? m.date : date.toLocaleString('fr-CA', {dateStyle:'short', timeStyle:'short'});
-            return `<tr class='border-t hover:bg-gray-50 ${m.is_read ? "text-gray-500" : "font-medium text-gray-800"}'>
-                <td class='px-4 py-2'>${m.is_read ? '' : '<span class="inline-block w-2 h-2 rounded-full bg-blue-500"></span>'}</td>
-                <td class='px-4 py-2 max-w-xs truncate text-xs'>${escHtml(m.sender)}</td>
-                <td class='px-4 py-2 max-w-sm truncate'>${escHtml(m.subject)}</td>
-                <td class='px-4 py-2 text-xs text-gray-400 whitespace-nowrap'>${dateStr}</td>
-                <td class='px-4 py-2 text-center'>${m.has_attachment ? '📎' : ''}</td>
-                <td class='px-4 py-2 text-right whitespace-nowrap'>
-                    <button onclick='emailMarkRead("${escAttr(m.uid)}", "${escAttr(folder)}")'
-                        class='text-xs text-blue-500 hover:underline mr-2' title='Marquer comme lu'>✓ Lu</button>
-                    <button onclick='emailMove("${escAttr(m.uid)}", "${escAttr(folder)}")'
-                        class='text-xs text-green-500 hover:underline mr-2' title='Déplacer'>📁</button>
-                    <button onclick='emailDelete("${escAttr(m.uid)}", "${escAttr(folder)}")'
-                        class='text-xs text-red-400 hover:underline' title='Supprimer'>🗑</button>
-                </td>
-            </tr>`;
-        }).join('');
-    } catch(e) {
-        document.getElementById('emailLoading').classList.add('hidden');
-    }
-}
-
-async function emailDelete(uid, folder) {
-    if (!confirm('Supprimer cet email ?')) return;
-    await fetch(`${API_URL}/email/messages/${uid}?folder=${encodeURIComponent(folder)}`,
-        { method: 'DELETE', headers: { 'Authorization': authHeader } });
-    loadEmails();
-}
-
-async function emailMove(uid, folder) {
-    const dest = prompt('Dossier de destination :', 'PaperFree-Traité');
-    if (!dest) return;
-    await fetch(`${API_URL}/email/messages/${uid}/move?source_folder=${encodeURIComponent(folder)}&destination_folder=${encodeURIComponent(dest)}`,
-        { method: 'POST', headers: { 'Authorization': authHeader } });
-    loadEmails();
-}
-
-async function emailMarkRead(uid, folder) {
-    await fetch(`${API_URL}/email/messages/${uid}/read?folder=${encodeURIComponent(folder)}`,
-        { method: 'POST', headers: { 'Authorization': authHeader } });
-    loadEmails();
-}
-
-async function syncAttachments() {
-    showEmailMsg('Synchronisation lancée...', 'blue');
-    const res = await fetch(`${API_URL}/email/sync-attachments`,
-        { method: 'POST', headers: { 'Authorization': authHeader } });
-    if (res.ok) showEmailMsg('✅ Sync pièces jointes en cours — vérifiez l\'onglet Documents', 'green');
-    else        showEmailMsg('❌ Erreur lors de la synchronisation', 'red');
-}
-
-async function purgePromo(dryRun) {
-    const label = dryRun ? 'Simulation' : 'Purge';
-    showEmailMsg(`${label} en cours... (peut prendre quelques secondes)`, 'blue');
-    // Si simulation, on analyse TOUS les emails (older_than_days=0)
-    const days = dryRun ? 0 : -1;
-    const res = await fetch(`${API_URL}/email/purge-promotional?dry_run=${dryRun}&older_than_days=${days}`,
-        { method: 'POST', headers: { 'Authorization': authHeader } });
-    if (res.ok) {
-        const r = await res.json();
-        let msg;
-        if (dryRun) {
-            msg = `👁 Simulation — ${r.total} email(s) au total, ${r.analysed} analysé(s), `
-                + `${r.too_recent} ignoré(s) (trop récents), ${r.deleted} promotionnel(s) détecté(s), `
-                + `${r.kept} conservé(s)`;
-        } else {
-            msg = `✅ Purge terminée — ${r.analysed} analysé(s), ${r.deleted} supprimé(s), `
-                + `${r.too_recent} ignoré(s) (trop récents), ${r.errors} erreur(s)`;
-        }
-        showEmailMsg(msg, r.deleted > 0 ? 'green' : 'blue');
-        if (!dryRun) loadEmails();
-    } else {
-        const err = await res.json().catch(() => ({}));
-        showEmailMsg(`❌ Erreur : ${err.detail || 'Connexion ou config manquante'}`, 'red');
-    }
-}
-
-function showEmailMsg(msg, color) {
-    const el = document.getElementById('emailActionMsg');
-    el.textContent = msg;
-    el.className = `text-sm ${color === 'green' ? 'text-green-600' : color === 'red' ? 'text-red-500' : 'text-blue-500'}`;
-    el.classList.remove('hidden');
-    setTimeout(() => el.classList.add('hidden'), 5000);
-}
-
-async function loadEmailLogs() {
-    try {
-        const res = await fetch(`${API_URL}/email/logs?limit=50`, { headers: { 'Authorization': authHeader } });
-        if (!res.ok) return;
-        const logs = await res.json();
-        const container = document.getElementById('emailLogs');
-        if (!logs.length) { container.innerHTML = '<p class="text-xs text-gray-400">Aucune action enregistrée.</p>'; return; }
-        const ACTION_LABELS = {
-            'download_attachment': '📎 Pièce jointe',
-            'delete_promo':        '🗑 Promo supprimé',
-            'manual_delete':       '🗑 Suppression manuelle',
-            'move':                '📁 Déplacé',
-            'purge_promo':         '🧹 Purge promotionnels',
-        };
-        container.innerHTML = logs.map(l => {
-            const dt = new Date(l.created_at).toLocaleString('fr-CA', {dateStyle:'short', timeStyle:'short'});
-            const label = ACTION_LABELS[l.action] || l.action;
-            return `<div class='flex items-start gap-2 text-xs text-gray-600 py-1 border-b border-gray-50'>
-                <span class='text-gray-400 whitespace-nowrap'>${dt}</span>
-                <span class='font-medium'>${label}</span>
-                ${l.subject ? `<span class='truncate text-gray-500'>${escHtml(l.subject)}</span>` : ''}
-                ${l.detail  ? `<span class='text-gray-400 truncate'>${escHtml(l.detail)}</span>` : ''}
-            </div>`;
-        }).join('');
-    } catch(e) {}
-}
-
-// ─── Upload ───────────────────────────────────────────────────────────────────
-let _pendingFile = null;
-
-function triggerCapture(mode) {
-    if (mode === 'camera') {
-        document.getElementById('fileInputCamera').click();
-    } else {
-        document.getElementById('fileInput').click();
-    }
-}
-
-function _handleFileSelected(file) {
-    if (!file) return;
-    _pendingFile = file;
-
-    // Prévisualisation
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        const preview = document.getElementById('previewContainer');
-        const img = document.getElementById('previewImg');
-        const tips = document.getElementById('qualityTips');
-
-        img.src = e.target.result;
-        preview.classList.remove('hidden');
-
-        // Afficher conseils si image (pas PDF)
-        if (file.type.startsWith('image/')) {
-            // Analyser rapidement la qualité (taille)
-            if (file.size < 200 * 1024) { // < 200 Ko = probablement trop petite
-                tips.classList.remove('hidden');
-            } else {
-                tips.classList.add('hidden');
-            }
-        } else {
-            tips.classList.add('hidden');
-            img.src = ''; // PDF : pas de preview image
-            img.alt = `📄 ${file.name}`;
-            img.style.padding = '2rem';
-            img.style.fontSize = '3rem';
-        }
-    };
-    reader.readAsDataURL(file);
-}
-
-function cancelPreview() {
-    _pendingFile = null;
-    document.getElementById('previewContainer').classList.add('hidden');
-    document.getElementById('fileInput').value = '';
-    document.getElementById('fileInputCamera').value = '';
-}
-
-async function confirmUpload() {
-    if (!_pendingFile) return;
-    const file = _pendingFile;
-    _pendingFile = null;
-
-    document.getElementById('previewContainer').classList.add('hidden');
-    document.getElementById('uploadStatus').classList.remove('hidden');
-
-    const formData = new FormData();
-    formData.append('file', file);
-    await fetch(`${API_URL}/upload`, {
-        method: 'POST', body: formData, headers: { 'Authorization': authHeader }
-    });
-
-    document.getElementById('fileInput').value = '';
-    document.getElementById('fileInputCamera').value = '';
-    setTimeout(() => document.getElementById('uploadStatus').classList.add('hidden'), 5000);
-    loadDocuments();
-}
-
-document.getElementById('fileInput').onchange = (e) => _handleFileSelected(e.target.files[0]);
-document.getElementById('fileInputCamera').onchange = (e) => _handleFileSelected(e.target.files[0]);
-
-// ─── Utils ────────────────────────────────────────────────────────────────────
-function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-function escAttr(s) { return String(s||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;'); }
-function cap(s)     { return s.charAt(0).toUpperCase() + s.slice(1); }
-
-// ─── Init ─────────────────────────────────────────────────────────────────────
 checkStatus();
 setInterval(() => { if (authHeader) loadDocuments(); }, 8000);
 </script>
 </body>
 </html>
+
