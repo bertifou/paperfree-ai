@@ -10,10 +10,15 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 import logging
 
+from core.config import ALLOWED_ORIGINS
+
 logger = logging.getLogger(__name__)
 
 # Rate limiter global
 limiter = Limiter(key_func=get_remote_address)
+
+# Origines autorisées à intégrer les fichiers en iframe (frontend sur port différent)
+ALLOWED_FRAME_ORIGINS = ALLOWED_ORIGINS
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
@@ -46,7 +51,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
 
         if is_embeddable:
-            # Autorise l'intégration en iframe depuis la même origine uniquement
+            # Autorise l'intégration en iframe depuis 'self' ET les origines frontend (port différent)
+            frame_ancestors = "'self' " + " ".join(o.strip() for o in ALLOWED_FRAME_ORIGINS)
             response.headers["X-Frame-Options"] = "SAMEORIGIN"
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; "
@@ -55,7 +61,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 "img-src 'self' data: blob:; "
                 "font-src 'self'; "
                 "connect-src 'self'; "
-                "frame-ancestors 'self';"
+                f"frame-ancestors {frame_ancestors};"
             )
         else:
             # Bloque toute intégration en iframe pour les autres routes
