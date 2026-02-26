@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-# Tesseract OCR + langue française + dépendances OpenCV
+# Tesseract OCR + langue française + dépendances OpenCV + Poppler (pdf2image)
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     tesseract-ocr-fra \
@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     libxrender-dev \
     libgomp1 \
     libmagic1 \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

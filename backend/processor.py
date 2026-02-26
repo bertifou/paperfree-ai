@@ -236,6 +236,46 @@ def _extract_pdf_text(file_path: str) -> str:
     return text.strip()
 
 
+def _pdf_page_to_image(file_path: str, page: int = 0) -> str | None:
+    """
+    Convertit une page d'un PDF en image PNG temporaire.
+    Utilise pdf2image (poppler) si disponible, sinon tente PyMuPDF (fitz).
+    Retourne le chemin de l'image temporaire, ou None en cas d'échec.
+    """
+    tmp_path = None
+    try:
+        from pdf2image import convert_from_path
+        images = convert_from_path(file_path, first_page=page + 1, last_page=page + 1, dpi=200)
+        if images:
+            tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+            tmp_path = tmp.name
+            tmp.close()
+            images[0].save(tmp_path, "PNG")
+            logger.info(f"[pdf→img] Page {page} extraite via pdf2image : {tmp_path}")
+            return tmp_path
+    except ImportError:
+        pass
+    except Exception as e:
+        logger.warning(f"[pdf→img] pdf2image échoué : {e}")
+
+    try:
+        import fitz  # PyMuPDF
+        doc = fitz.open(file_path)
+        pix = doc[page].get_pixmap(dpi=200)
+        tmp = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
+        tmp_path = tmp.name
+        tmp.close()
+        pix.save(tmp_path)
+        logger.info(f"[pdf→img] Page {page} extraite via PyMuPDF : {tmp_path}")
+        return tmp_path
+    except ImportError:
+        logger.warning("[pdf→img] Ni pdf2image ni PyMuPDF disponibles — fallback PDF scanné impossible")
+    except Exception as e:
+        logger.warning(f"[pdf→img] PyMuPDF échoué : {e}")
+
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Correction OCR — indépendante (texte seul)
 # ---------------------------------------------------------------------------
@@ -514,12 +554,19 @@ def apply_classification_rules(analysis: dict, text: str = "") -> dict:
 
 def process_document(file_path: str) -> tuple[str, dict]:
     """
-    Pipeline complet selon le mode configuré :
+    Pipeline complet selon le type de fichier et la configuration.
 
-    Vision DÉSACTIVÉE :
-      Tesseract OCR → Score confiance → Correction LLM si < seuil → Texte corrigé → LLM → JSON
+    PDF natif (texte extractible) :
+      PyPDF2 → Texte → LLM → JSON
+      (la vision n'est JAMAIS utilisée pour un PDF — inutile et coûteux)
 
-    Vision ACTIVÉE (double voie parallèle) :
+    PDF scanné (texte extrait < seuil) :
+      Conversion pages → images → OCR/Vision selon config → LLM → JSON
+
+    Image — Vision DÉSACTIVÉE :
+      Enhance → Tesseract OCR → Score confiance → Correction LLM si < seuil → LLM → JSON
+
+    Image — Vision ACTIVÉE (double voie parallèle) :
       Voie a) Image base64 → LLM multimodal → JSON structuré
       Voie b) Tesseract OCR → Score confiance → Fusion/correction avec JSON vision → LLM → JSON
       → Merge des deux JSON (voie b prioritaire sur les champs structurés)
@@ -584,6 +631,33 @@ def process_document(file_path: str) -> tuple[str, dict]:
         else:
             corrected_text = _extract_pdf_text(file_path)
             confidence = 100.0
+
+            # ── Fallback PDF scanné : texte trop court → OCR sur la 1ère page ──
+            if len(corrected_text.strip()) < 50:
+                logger.info("[processor] PDF scanné détecté (texte insuffisant) — fallback OCR sur page 1")
+                page_image_path = _pdf_page_to_image(file_path, page=0)
+                if page_image_path:
+                    try:
+                        if config.get("vision_enabled"):
+                            # Réutiliser la voie vision sur l'image extraite
+                            vision_result = analyze_with_vision(page_image_path, config)
+                            ocr_text, ocr_conf = extract_text_with_confidence(page_image_path)
+                            corrected_text = ocr_text or vision_result.get("extracted_text", "")
+                            analysis = analyze_with_llm(corrected_text, config)
+                            analysis = _merge_analyses(vision_result, analysis)
+                            analysis["pipeline_sources"] = ["vision", "ocr+llm"]
+                        else:
+                            ocr_text, confidence = extract_text_with_confidence(page_image_path)
+                            corrected_text = correct_ocr_with_llm(ocr_text, confidence, config) if ocr_text.strip() else ocr_text
+                            analysis = analyze_with_llm(corrected_text, config)
+                            analysis["pipeline_sources"] = ["ocr+llm"]
+                        analysis = apply_classification_rules(analysis, corrected_text)
+                        return corrected_text, analysis
+                    finally:
+                        try:
+                            os.remove(page_image_path)
+                        except OSError:
+                            pass
 
         analysis = analyze_with_llm(corrected_text, config)
         if confidence < 60 and is_image:

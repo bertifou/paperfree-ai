@@ -18,3 +18,6 @@ reportlab
 python-jose[cryptography]
 slowapi
 python-magic
+# Fallback PDF scanné : au moins l'un des deux doit être installé
+pdf2image      # nécessite poppler-utils (apt install poppler-utils)
+pymupdf        # alternative sans dépendance système
