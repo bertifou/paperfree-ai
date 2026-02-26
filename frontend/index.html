@@ -12,7 +12,7 @@
         #pdfViewer { width: 100%; height: 500px; border: none; }
         .meta-badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 0.7rem; font-weight: 600; }
 
-        /* â”€â”€ Classeur accordÃ©on â”€â”€ */
+        /* ── Classeur accordéon ── */
         .accordion-header {
             display: flex; align-items: center; justify-content: space-between;
             padding: 14px 18px; cursor: pointer; user-select: none;
@@ -40,7 +40,7 @@
 
     <!-- SETUP -->
     <div id='setupSection' class='hidden max-w-md mx-auto bg-white rounded-xl shadow-md p-6 mt-10'>
-        <h1 class='text-2xl font-bold mb-1'>ðŸ“„ PaperFree-AI</h1>
+        <h1 class='text-2xl font-bold mb-1'>📄 PaperFree-AI</h1>
         <p class='text-gray-500 text-sm mb-4'>Configuration initiale</p>
         <div class='space-y-3'>
             <input type='text' id='setupUser' placeholder="Nom d'utilisateur" class='w-full p-2 border rounded'>
@@ -53,7 +53,7 @@
 
     <!-- LOGIN -->
     <div id='loginSection' class='hidden max-w-md mx-auto bg-white rounded-xl shadow-md p-6 mt-10'>
-        <h1 class='text-2xl font-bold mb-1'>ðŸ“„ PaperFree-AI</h1>
+        <h1 class='text-2xl font-bold mb-1'>📄 PaperFree-AI</h1>
         <p class='text-gray-500 text-sm mb-4'>Connexion</p>
         <div class='space-y-3'>
             <input type='text' id='loginUser' placeholder='Utilisateur' class='w-full p-2 border rounded'>
@@ -68,13 +68,13 @@
 
         <!-- HEADER -->
         <div class='bg-white rounded-xl shadow-sm p-4 mb-4 flex items-center justify-between'>
-            <h1 class='text-xl font-bold text-gray-800'>ðŸ“„ PaperFree-AI</h1>
+            <h1 class='text-xl font-bold text-gray-800'>📄 PaperFree-AI</h1>
             <div class='flex gap-3'>
                 <button onclick='showTab("docs")'     id='btnDocs'     class='text-sm px-3 py-1 rounded tab-active'>Documents</button>
-                <button onclick='showTab("classeur")' id='btnClasseur' class='text-sm px-3 py-1 rounded text-gray-500'>ðŸ—‚ Classeur</button>
-                <button onclick='showTab("email")'    id='btnEmail'    class='text-sm px-3 py-1 rounded text-gray-500'>ðŸ“§ Emails</button>
-                <button onclick='showTab("settings")' id='btnSettings' class='text-sm px-3 py-1 rounded text-gray-500'>ParamÃ¨tres</button>
-                <button onclick='logout()' class='text-sm text-red-400 hover:text-red-600'>DÃ©connexion</button>
+                <button onclick='showTab("classeur")' id='btnClasseur' class='text-sm px-3 py-1 rounded text-gray-500'>🗂 Classeur</button>
+                <button onclick='showTab("email")'    id='btnEmail'    class='text-sm px-3 py-1 rounded text-gray-500'>📧 Emails</button>
+                <button onclick='showTab("settings")' id='btnSettings' class='text-sm px-3 py-1 rounded text-gray-500'>Paramètres</button>
+                <button onclick='logout()' class='text-sm text-red-400 hover:text-red-600'>Déconnexion</button>
             </div>
         </div>
 
@@ -91,43 +91,43 @@
                     <div class='grid grid-cols-2 gap-2 mb-2'>
                         <button onclick='triggerCapture("camera")'
                             class='bg-blue-500 text-white py-2 px-3 rounded-lg hover:bg-blue-600 text-sm font-medium'>
-                            ðŸ“· CamÃ©ra
+                            📷 Caméra
                         </button>
                         <button onclick='triggerCapture("file")'
                             class='bg-gray-100 text-gray-700 py-2 px-3 rounded-lg hover:bg-gray-200 text-sm font-medium'>
-                            ðŸ“ Fichier
+                            📁 Fichier
                         </button>
                     </div>
 
-                    <!-- PrÃ©visualisation avant upload -->
+                    <!-- Prévisualisation avant upload -->
                     <div id='previewContainer' class='hidden mb-2'>
                         <div class='relative'>
-                            <img id='previewImg' class='w-full rounded-lg border-2 border-blue-200 max-h-48 object-contain bg-gray-50' alt='PrÃ©visualisation'>
-                            <button onclick='cancelPreview()' class='absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs leading-none'>âœ•</button>
+                            <img id='previewImg' class='w-full rounded-lg border-2 border-blue-200 max-h-48 object-contain bg-gray-50' alt='Prévisualisation'>
+                            <button onclick='cancelPreview()' class='absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs leading-none'>✕</button>
                         </div>
                         <div id='qualityTips' class='mt-2 p-2 bg-yellow-50 rounded-lg border border-yellow-200 text-xs text-yellow-800 hidden'>
-                            <p class='font-semibold mb-1'>ðŸ’¡ Conseils pour une meilleure qualitÃ© :</p>
+                            <p class='font-semibold mb-1'>💡 Conseils pour une meilleure qualité :</p>
                             <ul class='space-y-0.5 list-disc list-inside'>
-                                <li>Posez le document Ã  plat sur une surface sombre</li>
-                                <li>Ã‰clairage uniforme, Ã©vitez les reflets</li>
+                                <li>Posez le document à plat sur une surface sombre</li>
+                                <li>Éclairage uniforme, évitez les reflets</li>
                                 <li>Photo bien droite, centrez le document</li>
                             </ul>
                         </div>
                         <div class='flex gap-2 mt-2'>
                             <button onclick='confirmUpload()'
                                 class='flex-1 bg-green-500 text-white py-1.5 rounded-lg hover:bg-green-600 text-sm font-medium'>
-                                âœ… Envoyer
+                                ✅ Envoyer
                             </button>
                             <button onclick='triggerCapture("camera")'
                                 class='bg-gray-100 text-gray-600 py-1.5 px-3 rounded-lg hover:bg-gray-200 text-sm'>
-                                ðŸ”„ Reprendre
+                                🔄 Reprendre
                             </button>
                         </div>
                     </div>
 
                     <div id='uploadStatus' class='hidden'>
                         <div class='flex items-center gap-2 text-xs text-blue-600 bg-blue-50 p-2 rounded-lg'>
-                            <span>â³ Traitement OCR + IA en cours...</span>
+                            <span>⏳ Traitement OCR + IA en cours...</span>
                         </div>
                     </div>
                 </div>
@@ -137,11 +137,11 @@
                     <div class='flex gap-2'>
                         <input type='text' id='searchInput' placeholder='Rechercher...'
                             class='flex-1 p-2 border rounded text-sm' onkeydown='if(event.key==="Enter") doSearch("text")'>
-                        <button onclick='doSearch("text")' class='bg-gray-100 hover:bg-gray-200 px-3 rounded text-sm'>ðŸ”</button>
+                        <button onclick='doSearch("text")' class='bg-gray-100 hover:bg-gray-200 px-3 rounded text-sm'>🔍</button>
                     </div>
                     <button onclick='doSearch("llm")'
                         class='w-full bg-purple-50 hover:bg-purple-100 text-purple-700 py-1.5 px-3 rounded text-sm font-medium border border-purple-200'>
-                        âœ¨ Demander au LLM
+                        ✨ Demander au LLM
                     </button>
                     <div id='llmAnswer' class='hidden bg-purple-50 rounded p-3 text-sm text-purple-900 border border-purple-200'></div>
                 </div>
@@ -153,11 +153,11 @@
                 </div>
             </div>
 
-            <!-- COLONNE DROITE: panneau de dÃ©tail -->
+            <!-- COLONNE DROITE: panneau de détail -->
             <div class='flex-1 bg-white rounded-xl shadow-sm p-4' id='detailPanel'>
                 <div class='flex items-center justify-center h-64 text-gray-300 flex-col gap-2'>
-                    <span class='text-5xl'>ðŸ“„</span>
-                    <span class='text-sm'>SÃ©lectionnez un document</span>
+                    <span class='text-5xl'>📄</span>
+                    <span class='text-sm'>Sélectionnez un document</span>
                 </div>
             </div>
         </div>
@@ -165,12 +165,12 @@
         <!-- TAB CLASSEUR -->
         <div id='tabClasseur' class='hidden flex gap-4'>
 
-            <!-- Colonne gauche : accordÃ©on -->
+            <!-- Colonne gauche : accordéon -->
             <div class='w-96 flex-shrink-0 bg-white rounded-xl shadow-sm overflow-hidden'>
 
-                <!-- En-tÃªte + tri -->
+                <!-- En-tête + tri -->
                 <div class='flex items-center justify-between px-4 py-3 border-b bg-gray-50'>
-                    <h2 class='text-sm font-semibold text-gray-600'>ðŸ—‚ CLASSEUR</h2>
+                    <h2 class='text-sm font-semibold text-gray-600'>🗂 CLASSEUR</h2>
                     <div class='flex items-center gap-2'>
                         <label class='text-xs text-gray-400'>Trier par</label>
                         <select id='classeurSort' onchange='renderClasseur()' class='text-xs border rounded px-2 py-1 bg-white text-gray-600'>
@@ -181,15 +181,15 @@
                     </div>
                 </div>
 
-                <!-- AccordÃ©on gÃ©nÃ©rÃ© dynamiquement -->
+                <!-- Accordéon généré dynamiquement -->
                 <div id='classeurAccordion' class='overflow-y-auto' style='max-height: calc(100vh - 180px)'></div>
             </div>
 
-            <!-- Colonne droite : dÃ©tail document (mÃªme panneau que docs) -->
+            <!-- Colonne droite : détail document (même panneau que docs) -->
             <div class='flex-1 bg-white rounded-xl shadow-sm p-4' id='classeurDetailPanel'>
                 <div class='flex items-center justify-center h-64 text-gray-300 flex-col gap-2'>
-                    <span class='text-5xl'>ðŸ—‚</span>
-                    <span class='text-sm'>SÃ©lectionnez un document dans le classeur</span>
+                    <span class='text-5xl'>🗂</span>
+                    <span class='text-sm'>Sélectionnez un document dans le classeur</span>
                 </div>
             </div>
         </div>
@@ -204,13 +204,13 @@
                     <option value='INBOX'>INBOX</option>
                 </select>
                 <button onclick='loadEmails()'
-                    class='bg-blue-500 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-600'>ðŸ”„ Actualiser</button>
+                    class='bg-blue-500 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-600'>🔄 Actualiser</button>
                 <button onclick='syncAttachments()'
-                    class='bg-green-500 text-white px-4 py-1.5 rounded text-sm hover:bg-green-600'>ðŸ“Ž Sync piÃ¨ces jointes</button>
+                    class='bg-green-500 text-white px-4 py-1.5 rounded text-sm hover:bg-green-600'>📎 Sync pièces jointes</button>
                 <button onclick='purgePromo(false)'
-                    class='bg-orange-500 text-white px-4 py-1.5 rounded text-sm hover:bg-orange-600'>ðŸ—‘ Purger promotionnels</button>
+                    class='bg-orange-500 text-white px-4 py-1.5 rounded text-sm hover:bg-orange-600'>🗑 Purger promotionnels</button>
                 <button onclick='purgePromo(true)'
-                    class='bg-gray-200 text-gray-700 px-4 py-1.5 rounded text-sm hover:bg-gray-300'>ðŸ‘ Simuler purge</button>
+                    class='bg-gray-200 text-gray-700 px-4 py-1.5 rounded text-sm hover:bg-gray-300'>👁 Simuler purge</button>
                 <span id='emailActionMsg' class='text-sm text-green-600 hidden'></span>
             </div>
 
@@ -225,7 +225,7 @@
                     <thead class='bg-gray-50 text-xs text-gray-500 uppercase'>
                         <tr>
                             <th class='px-4 py-2 text-left w-6'></th>
-                            <th class='px-4 py-2 text-left'>ExpÃ©diteur</th>
+                            <th class='px-4 py-2 text-left'>Expéditeur</th>
                             <th class='px-4 py-2 text-left'>Sujet</th>
                             <th class='px-4 py-2 text-left'>Date</th>
                             <th class='px-4 py-2 text-center'>PJ</th>
@@ -249,38 +249,38 @@
         <!-- TAB SETTINGS -->
         <div id='tabSettings' class='hidden bg-white rounded-xl shadow-sm p-6 max-w-2xl'>
 
-            <!-- â”€â”€ LLM â”€â”€ -->
-            <h2 class='text-lg font-semibold mb-4'>âš™ï¸ ParamÃ¨tres LLM</h2>
+            <!-- ── LLM ── -->
+            <h2 class='text-lg font-semibold mb-4'>⚙️ Paramètres LLM</h2>
 
             <div class='space-y-3'>
                 <div>
                     <label class='block text-sm font-medium text-gray-700 mb-1'>URL de base de l'API</label>
                     <input type='text' id='settingLlmUrl' class='w-full p-2 border rounded text-sm' placeholder='http://localhost:1234/v1'>
-                    <p class='text-xs text-gray-400 mt-1'>LM Studio : :1234/v1 Â· Ollama : :11434/v1 Â· OpenAI : api.openai.com/v1</p>
+                    <p class='text-xs text-gray-400 mt-1'>LM Studio : :1234/v1 · Ollama : :11434/v1 · OpenAI : api.openai.com/v1</p>
                 </div>
                 <div>
-                    <label class='block text-sm font-medium text-gray-700 mb-1'>ModÃ¨le</label>
+                    <label class='block text-sm font-medium text-gray-700 mb-1'>Modèle</label>
                     <input type='text' id='settingLlmModel' class='w-full p-2 border rounded text-sm' placeholder='local-model'>
                 </div>
                 <div>
-                    <label class='block text-sm font-medium text-gray-700 mb-1'>ClÃ© API</label>
+                    <label class='block text-sm font-medium text-gray-700 mb-1'>Clé API</label>
                     <input type='text' id='settingLlmKey' class='w-full p-2 border rounded text-sm' placeholder='lm-studio'>
                 </div>
                 <button onclick='saveSettings()' class='bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 text-sm'>Enregistrer</button>
-                <p id='settingsSaved' class='text-green-600 text-sm hidden'>âœ“ ParamÃ¨tres enregistrÃ©s</p>
+                <p id='settingsSaved' class='text-green-600 text-sm hidden'>✓ Paramètres enregistrés</p>
             </div>
 
-            <!-- â”€â”€ OCR & VISION â”€â”€ -->
+            <!-- ── OCR & VISION ── -->
             <div class='mt-8 pt-6 border-t'>
-                <h2 class='text-lg font-semibold mb-1'>ðŸ” OCR & Analyse par vision</h2>
-                <p class='text-xs text-gray-500 mb-4'>AmÃ©lioration de la qualitÃ© OCR grÃ¢ce au LLM, et option d'analyse directe par vision multimodale.</p>
+                <h2 class='text-lg font-semibold mb-1'>🔍 OCR & Analyse par vision</h2>
+                <p class='text-xs text-gray-500 mb-4'>Amélioration de la qualité OCR grâce au LLM, et option d'analyse directe par vision multimodale.</p>
 
                 <!-- Correction OCR -->
                 <div class='bg-gray-50 rounded-xl border p-4 mb-4'>
                     <div class='flex items-center justify-between mb-2'>
                         <div>
-                            <p class='text-sm font-semibold text-gray-700'>ðŸ§¹ Correction OCR par LLM</p>
-                            <p class='text-xs text-gray-400 mt-0.5'>Le texte extrait par Tesseract est envoyÃ© au LLM pour corriger les erreurs typiques (l/1, 0/O, mots coupÃ©sâ€¦)</p>
+                            <p class='text-sm font-semibold text-gray-700'>🧹 Correction OCR par LLM</p>
+                            <p class='text-xs text-gray-400 mt-0.5'>Le texte extrait par Tesseract est envoyé au LLM pour corriger les erreurs typiques (l/1, 0/O, mots coupés…)</p>
                         </div>
                         <label class='relative inline-flex items-center cursor-pointer ml-4'>
                             <input type='checkbox' id='settingOcrCorrection' class='sr-only peer'>
@@ -288,17 +288,17 @@
                         </label>
                     </div>
                     <div>
-                        <label class='block text-xs font-medium text-gray-600 mb-1'>Seuil de confiance OCR <span class='text-gray-400'>(0â€“100 %)</span></label>
+                        <label class='block text-xs font-medium text-gray-600 mb-1'>Seuil de confiance OCR <span class='text-gray-400'>(0–100 %)</span></label>
                         <div class='flex items-center gap-3'>
                             <input type='range' id='settingOcrThreshold' min='0' max='100' value='80'
                                 oninput='document.getElementById("ocrThresholdVal").textContent=this.value+"%"'
                                 class='flex-1'>
                             <span id='ocrThresholdVal' class='text-sm font-mono text-gray-700 w-10 text-right'>80%</span>
                         </div>
-                        <p class='text-xs text-gray-400 mt-1'>En dessous de ce seuil, la correction LLM est automatiquement appliquÃ©e. Au-dessus, une lÃ©gÃ¨re passe de nettoyage est faite si la correction est activÃ©e.</p>
+                        <p class='text-xs text-gray-400 mt-1'>En dessous de ce seuil, la correction LLM est automatiquement appliquée. Au-dessus, une légère passe de nettoyage est faite si la correction est activée.</p>
                     </div>
                     <div class='mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700'>
-                        ðŸ’¡ <strong>IndÃ©pendant de la vision :</strong> cette correction fonctionne que la vision soit activÃ©e ou non. Quand la vision est activÃ©e, la voie OCR (b) bÃ©nÃ©ficiera en plus de la fusion avec le contexte vision.
+                        💡 <strong>Indépendant de la vision :</strong> cette correction fonctionne que la vision soit activée ou non. Quand la vision est activée, la voie OCR (b) bénéficiera en plus de la fusion avec le contexte vision.
                     </div>
                 </div>
 
@@ -306,8 +306,8 @@
                 <div class='bg-purple-50 rounded-xl border border-purple-200 p-4'>
                     <div class='flex items-center justify-between mb-3'>
                         <div>
-                            <p class='text-sm font-semibold text-purple-800'>ðŸ‘ Analyse par vision (LLM multimodal)</p>
-                            <p class='text-xs text-purple-600 mt-0.5'>Envoie l'image directement au LLM (bypass OCR). Meilleure prÃ©cision sur les documents complexes, tampons, manuscrits.</p>
+                            <p class='text-sm font-semibold text-purple-800'>👁 Analyse par vision (LLM multimodal)</p>
+                            <p class='text-xs text-purple-600 mt-0.5'>Envoie l'image directement au LLM (bypass OCR). Meilleure précision sur les documents complexes, tampons, manuscrits.</p>
                         </div>
                         <label class='relative inline-flex items-center cursor-pointer ml-4'>
                             <input type='checkbox' id='settingVisionEnabled' onchange='toggleVisionPanel()' class='sr-only peer'>
@@ -319,48 +319,48 @@
                         <div>
                             <label class='block text-xs font-medium text-gray-700 mb-1'>Provider vision</label>
                             <select id='settingVisionProvider' onchange='toggleVisionProvider()' class='w-full p-2 border rounded text-sm bg-white'>
-                                <option value='local'>ðŸ–¥ Local (LM Studio / Ollama)</option>
-                                <option value='openai'>â˜ï¸ OpenAI</option>
-                                <option value='anthropic'>ðŸ¤– Anthropic</option>
-                                <option value='gemini'>ðŸ”· Google Gemini</option>
+                                <option value='local'>🖥 Local (LM Studio / Ollama)</option>
+                                <option value='openai'>☁️ OpenAI</option>
+                                <option value='anthropic'>🤖 Anthropic</option>
+                                <option value='gemini'>🔷 Google Gemini</option>
                             </select>
                         </div>
 
                         <div id='visionLocalNote' class='bg-white border rounded p-3 text-xs text-gray-600'>
-                            â„¹ï¸ En mode local, le modÃ¨le principal doit supporter la vision (ex: <code class='font-mono bg-gray-100 px-1 rounded'>llava-v1.6</code>, <code class='font-mono bg-gray-100 px-1 rounded'>minicpm-v</code>, <code class='font-mono bg-gray-100 px-1 rounded'>moondream2</code>).
-                            L'URL et la clÃ© du LLM principal seront utilisÃ©es sauf si vous les surchargez ci-dessous.
+                            ℹ️ En mode local, le modèle principal doit supporter la vision (ex: <code class='font-mono bg-gray-100 px-1 rounded'>llava-v1.6</code>, <code class='font-mono bg-gray-100 px-1 rounded'>minicpm-v</code>, <code class='font-mono bg-gray-100 px-1 rounded'>moondream2</code>).
+                            L'URL et la clé du LLM principal seront utilisées sauf si vous les surchargez ci-dessous.
                         </div>
 
                         <div id='visionExternalNote' class='hidden bg-amber-50 border border-amber-200 rounded p-3 text-xs text-amber-700'>
-                            âš ï¸ Mode externe : des donnÃ©es (images de vos documents) seront envoyÃ©es Ã  un service cloud. Assurez-vous que c'est compatible avec vos obligations de confidentialitÃ©.
+                            ⚠️ Mode externe : des données (images de vos documents) seront envoyées à un service cloud. Assurez-vous que c'est compatible avec vos obligations de confidentialité.
                         </div>
 
                         <div class='grid grid-cols-2 gap-3'>
                             <div>
-                                <label class='block text-xs font-medium text-gray-700 mb-1'>ModÃ¨le vision <span class='text-gray-400'>(optionnel)</span></label>
-                                <input type='text' id='settingVisionModel' placeholder='Nom du modÃ¨le (optionnel)'
+                                <label class='block text-xs font-medium text-gray-700 mb-1'>Modèle vision <span class='text-gray-400'>(optionnel)</span></label>
+                                <input type='text' id='settingVisionModel' placeholder='Nom du modèle (optionnel)'
                                     class='w-full p-2 border rounded text-sm'>
                             </div>
                             <div id='visionApiKeyField'>
-                                <label class='block text-xs font-medium text-gray-700 mb-1'>ClÃ© API vision <span class='text-gray-400'>(si externe)</span></label>
+                                <label class='block text-xs font-medium text-gray-700 mb-1'>Clé API vision <span class='text-gray-400'>(si externe)</span></label>
                                 <input type='password' id='settingVisionApiKey' placeholder='sk-...'
                                     class='w-full p-2 border rounded text-sm'>
                             </div>
                         </div>
                         <div id='visionBaseUrlField'>
-                            <label class='block text-xs font-medium text-gray-700 mb-1'>URL base vision <span class='text-gray-400'>(local diffÃ©rent du LLM principal)</span></label>
+                            <label class='block text-xs font-medium text-gray-700 mb-1'>URL base vision <span class='text-gray-400'>(local différent du LLM principal)</span></label>
                             <input type='text' id='settingVisionBaseUrl' placeholder='http://localhost:1234/v1'
                                 class='w-full p-2 border rounded text-sm'>
                         </div>
 
-                        <!-- Fusion vision Ã— OCR -->
+                        <!-- Fusion vision × OCR -->
                         <div class='mt-3 pt-3 border-t border-purple-200'>
                             <div class='flex items-center justify-between'>
                                 <div>
-                                    <p class='text-sm font-semibold text-purple-800'>ðŸ”€ Fusion vision Ã— OCR (voie b)</p>
+                                    <p class='text-sm font-semibold text-purple-800'>🔀 Fusion vision × OCR (voie b)</p>
                                     <p class='text-xs text-purple-600 mt-0.5'>
-                                        En parallÃ¨le de la vision directe, lance Tesseract puis corrige l'OCR
-                                        en utilisant le contexte JSON de la vision. Les deux JSON sont ensuite fusionnÃ©s.
+                                        En parallèle de la vision directe, lance Tesseract puis corrige l'OCR
+                                        en utilisant le contexte JSON de la vision. Les deux JSON sont ensuite fusionnés.
                                     </p>
                                 </div>
                                 <label class='relative inline-flex items-center cursor-pointer ml-4'>
@@ -369,9 +369,9 @@
                                 </label>
                             </div>
                             <div class='mt-2 text-xs text-purple-700 bg-purple-100 rounded-lg p-2'>
-                                ðŸ”¬ <strong>Pipeline double voie :</strong>
-                                Voie a) Image â†’ LLM multimodal â†’ JSON &nbsp;|&nbsp;
-                                Voie b) OCR â†’ correction enrichie â†’ LLM â†’ JSON &nbsp;â†’&nbsp; <strong>Merge final</strong>
+                                🔬 <strong>Pipeline double voie :</strong>
+                                Voie a) Image → LLM multimodal → JSON &nbsp;|&nbsp;
+                                Voie b) OCR → correction enrichie → LLM → JSON &nbsp;→&nbsp; <strong>Merge final</strong>
                             </div>
                         </div>
                     </div>
@@ -379,109 +379,109 @@
 
                 <div class='mt-4 flex gap-3'>
                     <button onclick='saveOcrVisionSettings()' class='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm'>Enregistrer OCR/Vision</button>
-                    <p id='ocrVisionSaved' class='text-green-600 text-sm hidden self-center'>âœ“ SauvegardÃ©</p>
+                    <p id='ocrVisionSaved' class='text-green-600 text-sm hidden self-center'>✓ Sauvegardé</p>
                 </div>
             </div>
 
 
-            <!-- â”€â”€ GUIDE CONNEXION EMAIL â”€â”€ -->
+            <!-- ── GUIDE CONNEXION EMAIL ── -->
             <div class='mt-8 pt-6 border-t'>
-                <h2 class='text-lg font-semibold mb-1'>ðŸ“§ Connexion Email â€” Quel provider utilisez-vous ?</h2>
+                <h2 class='text-lg font-semibold mb-1'>📧 Connexion Email — Quel provider utilisez-vous ?</h2>
                 <p class='text-xs text-gray-500 mb-4'>Cliquez sur votre fournisseur pour afficher le guide de configuration.</p>
                 <div class='grid grid-cols-2 gap-3 mb-6 sm:grid-cols-4'>
                     <button onclick='showGuide("gmail")'     class='guide-btn border-2 border-gray-200 rounded-xl p-3 text-center hover:border-red-400 hover:bg-red-50 transition'>
-                        <div class='text-2xl mb-1'>ðŸ“®</div><div class='text-xs font-semibold text-gray-700'>Gmail</div><div class='text-xs text-gray-400'>@gmail.com</div>
+                        <div class='text-2xl mb-1'>📮</div><div class='text-xs font-semibold text-gray-700'>Gmail</div><div class='text-xs text-gray-400'>@gmail.com</div>
                     </button>
                     <button onclick='showGuide("outlook")'   class='guide-btn border-2 border-gray-200 rounded-xl p-3 text-center hover:border-blue-400 hover:bg-blue-50 transition'>
-                        <div class='text-2xl mb-1'>ðŸªŸ</div><div class='text-xs font-semibold text-gray-700'>Outlook perso</div><div class='text-xs text-gray-400'>@hotmail/@live</div>
+                        <div class='text-2xl mb-1'>🪟</div><div class='text-xs font-semibold text-gray-700'>Outlook perso</div><div class='text-xs text-gray-400'>@hotmail/@live</div>
                     </button>
                     <button onclick='showGuide("m365")'      class='guide-btn border-2 border-gray-200 rounded-xl p-3 text-center hover:border-blue-400 hover:bg-blue-50 transition'>
-                        <div class='text-2xl mb-1'>ðŸ¢</div><div class='text-xs font-semibold text-gray-700'>Microsoft 365</div><div class='text-xs text-gray-400'>Entreprise / Ã‰cole</div>
+                        <div class='text-2xl mb-1'>🏢</div><div class='text-xs font-semibold text-gray-700'>Microsoft 365</div><div class='text-xs text-gray-400'>Entreprise / École</div>
                     </button>
                     <button onclick='showGuide("other")'     class='guide-btn border-2 border-gray-200 rounded-xl p-3 text-center hover:border-gray-400 hover:bg-gray-50 transition'>
-                        <div class='text-2xl mb-1'>âœ‰ï¸</div><div class='text-xs font-semibold text-gray-700'>Autre</div><div class='text-xs text-gray-400'>Yahoo, OVH, Freeâ€¦</div>
+                        <div class='text-2xl mb-1'>✉️</div><div class='text-xs font-semibold text-gray-700'>Autre</div><div class='text-xs text-gray-400'>Yahoo, OVH, Free…</div>
                     </button>
                 </div>
 
                 <!-- Guide Gmail -->
                 <div id='guide-gmail' class='guide-panel hidden bg-red-50 border border-red-200 rounded-xl p-4 mb-4 text-sm'>
-                    <h3 class='font-bold text-red-700 mb-2'>ðŸ“® Gmail â€” OAuth2 obligatoire (gratuit)</h3>
-                    <p class='text-gray-600 mb-3'>Google a supprimÃ© l'auth basique. Il faut crÃ©er une app OAuth2 gratuite sur Google Cloud Console (sans carte de crÃ©dit, sans vÃ©rification pour usage personnel).</p>
+                    <h3 class='font-bold text-red-700 mb-2'>📮 Gmail — OAuth2 obligatoire (gratuit)</h3>
+                    <p class='text-gray-600 mb-3'>Google a supprimé l'auth basique. Il faut créer une app OAuth2 gratuite sur Google Cloud Console (sans carte de crédit, sans vérification pour usage personnel).</p>
                     <ol class='space-y-2 text-gray-700 list-decimal list-inside'>
-                        <li>Aller sur <a href='https://console.cloud.google.com' target='_blank' class='text-blue-600 underline font-medium'>console.cloud.google.com</a> â†’ <b>CrÃ©er un projet</b> (ex: "PaperFree-AI")</li>
-                        <li><b>APIs &amp; Services</b> â†’ <b>BibliothÃ¨que</b> â†’ chercher <b>"Gmail API"</b> â†’ <b>Activer</b></li>
-                        <li><b>APIs &amp; Services</b> â†’ <b>Ã‰cran de consentement OAuth</b> â†’ Type : <b>Externe</b> â†’ remplir le nom â†’ Sauvegarder</li>
-                        <li><b>Credentials</b> â†’ <b>+ CrÃ©er des identifiants</b> â†’ <b>ID client OAuth 2.0</b> â†’ Type : <b>Application Web</b></li>
-                        <li>URI de redirection autorisÃ©e : <code class='bg-white border px-1 rounded font-mono text-xs select-all' onclick='this.select()'>http://localhost:8000/email/oauth/google/callback</code></li>
-                        <li>Copier le <b>Client ID</b> et le <b>Client Secret</b> ci-dessous â†’ <b>Enregistrer</b> â†’ <b>Connecter mon compte Gmail</b></li>
-                        <li>Si l'Ã©cran "App non vÃ©rifiÃ©e" apparaÃ®t â†’ cliquer <b>AvancÃ©</b> â†’ <b>AccÃ©der Ã  [nom] (non sÃ©curisÃ©)</b> â€” c'est normal pour une app personnelle.</li>
+                        <li>Aller sur <a href='https://console.cloud.google.com' target='_blank' class='text-blue-600 underline font-medium'>console.cloud.google.com</a> → <b>Créer un projet</b> (ex: "PaperFree-AI")</li>
+                        <li><b>APIs &amp; Services</b> → <b>Bibliothèque</b> → chercher <b>"Gmail API"</b> → <b>Activer</b></li>
+                        <li><b>APIs &amp; Services</b> → <b>Écran de consentement OAuth</b> → Type : <b>Externe</b> → remplir le nom → Sauvegarder</li>
+                        <li><b>Credentials</b> → <b>+ Créer des identifiants</b> → <b>ID client OAuth 2.0</b> → Type : <b>Application Web</b></li>
+                        <li>URI de redirection autorisée : <code class='bg-white border px-1 rounded font-mono text-xs select-all' onclick='this.select()'>http://localhost:8000/email/oauth/google/callback</code></li>
+                        <li>Copier le <b>Client ID</b> et le <b>Client Secret</b> ci-dessous → <b>Enregistrer</b> → <b>Connecter mon compte Gmail</b></li>
+                        <li>Si l'écran "App non vérifiée" apparaît → cliquer <b>Avancé</b> → <b>Accéder à [nom] (non sécurisé)</b> — c'est normal pour une app personnelle.</li>
                     </ol>
-                    <p class='mt-3 text-xs text-gray-500'>â„¹ï¸ Serveur IMAP : <code class='bg-white px-1 rounded cursor-pointer font-mono' onclick='fillImap("imap.gmail.com")'>imap.gmail.com</code> (rempli automatiquement lors de la connexion)</p>
+                    <p class='mt-3 text-xs text-gray-500'>ℹ️ Serveur IMAP : <code class='bg-white px-1 rounded cursor-pointer font-mono' onclick='fillImap("imap.gmail.com")'>imap.gmail.com</code> (rempli automatiquement lors de la connexion)</p>
                 </div>
 
                 <!-- Guide Outlook perso -->
                 <div id='guide-outlook' class='guide-panel hidden bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 text-sm'>
-                    <h3 class='font-bold text-blue-700 mb-2'>ðŸªŸ Outlook / Hotmail / Live â€” Mot de passe d'application (recommandÃ©)</h3>
-                    <p class='text-gray-600 mb-2'>Microsoft a rendu trÃ¨s difficile l'enregistrement d'une app Azure pour les comptes personnels. La solution la plus simple est un <b>mot de passe d'application</b>, qui fonctionne avec tous les clients email tiers (Thunderbird, Apple Mail, etc.).</p>
+                    <h3 class='font-bold text-blue-700 mb-2'>🪟 Outlook / Hotmail / Live — Mot de passe d'application (recommandé)</h3>
+                    <p class='text-gray-600 mb-2'>Microsoft a rendu très difficile l'enregistrement d'une app Azure pour les comptes personnels. La solution la plus simple est un <b>mot de passe d'application</b>, qui fonctionne avec tous les clients email tiers (Thunderbird, Apple Mail, etc.).</p>
                     <div class='bg-white border border-blue-100 rounded-lg p-3 mb-3'>
-                        <p class='font-semibold text-blue-800 mb-2'>âœ… Option 1 â€” Mot de passe d'application (simple, sans Azure)</p>
+                        <p class='font-semibold text-blue-800 mb-2'>✅ Option 1 — Mot de passe d'application (simple, sans Azure)</p>
                         <ol class='space-y-1 text-gray-700 list-decimal list-inside'>
                             <li>Aller sur <a href='https://account.microsoft.com/security' target='_blank' class='text-blue-600 underline font-medium'>account.microsoft.com/security</a></li>
-                            <li>Activer la <b>vÃ©rification en deux Ã©tapes</b> si ce n'est pas dÃ©jÃ  fait</li>
-                            <li>Section <b>SÃ©curitÃ© avancÃ©e</b> â†’ <b>Mot de passe d'application</b> â†’ <b>CrÃ©er</b></li>
-                            <li>Nommer l'app "PaperFree-AI" â†’ copier le mot de passe gÃ©nÃ©rÃ©</li>
+                            <li>Activer la <b>vérification en deux étapes</b> si ce n'est pas déjà fait</li>
+                            <li>Section <b>Sécurité avancée</b> → <b>Mot de passe d'application</b> → <b>Créer</b></li>
+                            <li>Nommer l'app "PaperFree-AI" → copier le mot de passe généré</li>
                             <li>Dans la section IMAP ci-dessous : saisir votre adresse email + ce mot de passe</li>
                             <li>Serveur IMAP : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer text-xs' onclick='fillImap("imap-mail.outlook.com")'>imap-mail.outlook.com</code></li>
                         </ol>
                     </div>
                     <div class='bg-white border border-gray-200 rounded-lg p-3'>
-                        <p class='font-semibold text-gray-600 mb-2'>âš™ï¸ Option 2 â€” OAuth2 via Azure (pour dÃ©veloppeurs, carte de crÃ©dit requise pour vÃ©rification)</p>
+                        <p class='font-semibold text-gray-600 mb-2'>⚙️ Option 2 — OAuth2 via Azure (pour développeurs, carte de crédit requise pour vérification)</p>
                         <ol class='space-y-1 text-gray-600 list-decimal list-inside text-xs'>
-                            <li>CrÃ©er un compte Azure sur <a href='https://portal.azure.com' target='_blank' class='text-blue-600 underline'>portal.azure.com</a> (vÃ©rification CB, non dÃ©bitÃ©)</li>
-                            <li>Microsoft Entra ID â†’ <b>Inscriptions d'applications</b> â†’ <b>Nouvelle inscription</b></li>
-                            <li>Type : <b>Comptes Microsoft personnels uniquement</b> Â· Redirect URI : <code class='bg-gray-100 px-1 rounded font-mono' onclick='this.select()'>http://localhost:8000/email/oauth/callback</code></li>
-                            <li><b>Certificats &amp; secrets</b> â†’ Nouveau secret â†’ copier la valeur</li>
-                            <li><b>Autorisations API</b> â†’ Office 365 Exchange Online â†’ <code class='bg-gray-100 px-1 rounded font-mono'>IMAP.AccessAsUser.All</code> + <code class='bg-gray-100 px-1 rounded font-mono'>offline_access</code></li>
-                            <li>Remplir les champs OAuth2 Microsoft ci-dessous â†’ Connecter</li>
+                            <li>Créer un compte Azure sur <a href='https://portal.azure.com' target='_blank' class='text-blue-600 underline'>portal.azure.com</a> (vérification CB, non débité)</li>
+                            <li>Microsoft Entra ID → <b>Inscriptions d'applications</b> → <b>Nouvelle inscription</b></li>
+                            <li>Type : <b>Comptes Microsoft personnels uniquement</b> · Redirect URI : <code class='bg-gray-100 px-1 rounded font-mono' onclick='this.select()'>http://localhost:8000/email/oauth/callback</code></li>
+                            <li><b>Certificats &amp; secrets</b> → Nouveau secret → copier la valeur</li>
+                            <li><b>Autorisations API</b> → Office 365 Exchange Online → <code class='bg-gray-100 px-1 rounded font-mono'>IMAP.AccessAsUser.All</code> + <code class='bg-gray-100 px-1 rounded font-mono'>offline_access</code></li>
+                            <li>Remplir les champs OAuth2 Microsoft ci-dessous → Connecter</li>
                         </ol>
                     </div>
                 </div>
 
                 <!-- Guide Microsoft 365 -->
                 <div id='guide-m365' class='guide-panel hidden bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-4 text-sm'>
-                    <h3 class='font-bold text-indigo-700 mb-2'>ðŸ¢ Microsoft 365 Entreprise / Ã‰cole â€” OAuth2 Azure</h3>
-                    <p class='text-gray-600 mb-3'>Votre organisation dispose dÃ©jÃ  d'un tenant Azure. Demandez Ã  votre administrateur IT d'enregistrer l'application, ou faites-le vous-mÃªme si vous avez les droits.</p>
+                    <h3 class='font-bold text-indigo-700 mb-2'>🏢 Microsoft 365 Entreprise / École — OAuth2 Azure</h3>
+                    <p class='text-gray-600 mb-3'>Votre organisation dispose déjà d'un tenant Azure. Demandez à votre administrateur IT d'enregistrer l'application, ou faites-le vous-même si vous avez les droits.</p>
                     <ol class='space-y-2 text-gray-700 list-decimal list-inside'>
                         <li>Aller sur <a href='https://portal.azure.com' target='_blank' class='text-blue-600 underline font-medium'>portal.azure.com</a> avec votre compte professionnel</li>
-                        <li><b>Microsoft Entra ID</b> â†’ <b>Inscriptions d'applications</b> â†’ <b>Nouvelle inscription</b></li>
+                        <li><b>Microsoft Entra ID</b> → <b>Inscriptions d'applications</b> → <b>Nouvelle inscription</b></li>
                         <li>Type : <b>Comptes dans cet annuaire uniquement</b> (ou multitenant si plusieurs organisations)</li>
                         <li>Redirect URI : <code class='bg-white border px-1 rounded font-mono text-xs select-all' onclick='this.select()'>http://localhost:8000/email/oauth/callback</code></li>
-                        <li><b>Certificats &amp; secrets</b> â†’ Nouveau secret client â†’ copier la valeur immÃ©diatement</li>
-                        <li><b>Autorisations API</b> â†’ <b>Ajouter</b> â†’ Office 365 Exchange Online â†’ <b>Autorisations dÃ©lÃ©guÃ©es</b> â†’ cocher <code class='bg-white border px-1 rounded font-mono text-xs'>IMAP.AccessAsUser.All</code> + <code class='bg-white border px-1 rounded font-mono text-xs'>offline_access</code></li>
+                        <li><b>Certificats &amp; secrets</b> → Nouveau secret client → copier la valeur immédiatement</li>
+                        <li><b>Autorisations API</b> → <b>Ajouter</b> → Office 365 Exchange Online → <b>Autorisations déléguées</b> → cocher <code class='bg-white border px-1 rounded font-mono text-xs'>IMAP.AccessAsUser.All</code> + <code class='bg-white border px-1 rounded font-mono text-xs'>offline_access</code></li>
                         <li>Cliquer <b>Accorder le consentement administrateur</b></li>
-                        <li>Remplir Client ID &amp; Secret dans la section OAuth2 Microsoft ci-dessous â†’ Connecter</li>
+                        <li>Remplir Client ID &amp; Secret dans la section OAuth2 Microsoft ci-dessous → Connecter</li>
                     </ol>
-                    <p class='mt-3 text-xs text-gray-500'>â„¹ï¸ Serveur IMAP : <code class='bg-white px-1 rounded cursor-pointer font-mono' onclick='fillImap("outlook.office365.com")'>outlook.office365.com</code></p>
+                    <p class='mt-3 text-xs text-gray-500'>ℹ️ Serveur IMAP : <code class='bg-white px-1 rounded cursor-pointer font-mono' onclick='fillImap("outlook.office365.com")'>outlook.office365.com</code></p>
                 </div>
 
                 <!-- Guide Autre -->
                 <div id='guide-other' class='guide-panel hidden bg-gray-50 border border-gray-200 rounded-xl p-4 mb-4 text-sm'>
-                    <h3 class='font-bold text-gray-700 mb-2'>âœ‰ï¸ Autres providers â€” Connexion directe IMAP</h3>
-                    <p class='text-gray-600 mb-3'>Yahoo, OVH, Free, Orange, Fastmail, et la plupart des hÃ©bergeurs mail supportent encore l'authentification IMAP classique ou un mot de passe d'application.</p>
+                    <h3 class='font-bold text-gray-700 mb-2'>✉️ Autres providers — Connexion directe IMAP</h3>
+                    <p class='text-gray-600 mb-3'>Yahoo, OVH, Free, Orange, Fastmail, et la plupart des hébergeurs mail supportent encore l'authentification IMAP classique ou un mot de passe d'application.</p>
                     <div class='space-y-2'>
                         <div class='bg-white border rounded-lg p-3'>
                             <p class='font-semibold text-gray-700 mb-1'>Yahoo Mail</p>
-                            <p class='text-gray-600 text-xs'>Activer "AccÃ¨s aux apps moins sÃ©curisÃ©es" <b>ou</b> gÃ©nÃ©rer un App Password sur <a href='https://security.yahoo.com' target='_blank' class='text-blue-600 underline'>security.yahoo.com</a>. Serveur : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.mail.yahoo.com")'>imap.mail.yahoo.com</code></p>
+                            <p class='text-gray-600 text-xs'>Activer "Accès aux apps moins sécurisées" <b>ou</b> générer un App Password sur <a href='https://security.yahoo.com' target='_blank' class='text-blue-600 underline'>security.yahoo.com</a>. Serveur : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.mail.yahoo.com")'>imap.mail.yahoo.com</code></p>
                         </div>
                         <div class='bg-white border rounded-lg p-3'>
                             <p class='font-semibold text-gray-700 mb-1'>OVH / Infomaniak / Gandi</p>
-                            <p class='text-gray-600 text-xs'>Connexion directe avec vos identifiants email habituels. Serveur IMAP fourni par votre hÃ©bergeur dans votre espace client.</p>
+                            <p class='text-gray-600 text-xs'>Connexion directe avec vos identifiants email habituels. Serveur IMAP fourni par votre hébergeur dans votre espace client.</p>
                         </div>
                         <div class='bg-white border rounded-lg p-3'>
                             <p class='font-semibold text-gray-700 mb-1'>Free / Orange / SFR</p>
                             <p class='text-gray-600 text-xs'>
-                                Free : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.free.fr")'>imap.free.fr</code> Â·
-                                Orange : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.orange.fr")'>imap.orange.fr</code> Â·
+                                Free : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.free.fr")'>imap.free.fr</code> ·
+                                Orange : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.orange.fr")'>imap.orange.fr</code> ·
                                 SFR : <code class='bg-gray-100 px-1 rounded font-mono cursor-pointer' onclick='fillImap("imap.sfr.fr")'>imap.sfr.fr</code>
                             </p>
                         </div>
@@ -490,9 +490,9 @@
                 </div>
             </div>
 
-            <!-- â”€â”€ CONFIG IMAP â”€â”€ -->
+            <!-- ── CONFIG IMAP ── -->
             <div class='mt-6 pt-6 border-t'>
-                <h2 class='text-lg font-semibold mb-1'>ðŸ“§ Configuration IMAP</h2>
+                <h2 class='text-lg font-semibold mb-1'>📧 Configuration IMAP</h2>
                 <div class='space-y-3'>
                     <div class='grid grid-cols-2 gap-3'>
                         <div>
@@ -506,17 +506,17 @@
                     </div>
                     <div>
                         <label class='block text-sm font-medium text-gray-700 mb-1'>Mot de passe <span class='font-normal text-gray-400'>(ou mot de passe d'application)</span></label>
-                        <input type='password' id='settingEmailPass' class='w-full p-2 border rounded text-sm' placeholder='â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢'>
+                        <input type='password' id='settingEmailPass' class='w-full p-2 border rounded text-sm' placeholder='••••••••'>
                         <p class='text-xs text-gray-400 mt-1'>Laisser vide si vous utilisez OAuth2 (Gmail ou Microsoft 365).</p>
                     </div>
                     <div class='grid grid-cols-2 gap-3'>
                         <div>
-                            <label class='block text-sm font-medium text-gray-700 mb-1'>Dossier surveillÃ©</label>
+                            <label class='block text-sm font-medium text-gray-700 mb-1'>Dossier surveillé</label>
                             <input type='text' id='settingEmailFolder' class='w-full p-2 border rounded text-sm' placeholder='INBOX'>
                         </div>
                         <div>
-                            <label class='block text-sm font-medium text-gray-700 mb-1'>Dossier "TraitÃ©"</label>
-                            <input type='text' id='settingEmailTreated' class='w-full p-2 border rounded text-sm' placeholder='PaperFree-TraitÃ©'>
+                            <label class='block text-sm font-medium text-gray-700 mb-1'>Dossier "Traité"</label>
+                            <input type='text' id='settingEmailTreated' class='w-full p-2 border rounded text-sm' placeholder='PaperFree-Traité'>
                         </div>
                     </div>
                     <div class='grid grid-cols-3 gap-3'>
@@ -529,23 +529,23 @@
                             <input type='number' id='settingEmailPurgeInterval' class='w-full p-2 border rounded text-sm' placeholder='24'>
                         </div>
                         <div>
-                            <label class='block text-sm font-medium text-gray-700 mb-1'>Ã‚ge promo (jours)</label>
+                            <label class='block text-sm font-medium text-gray-700 mb-1'>Âge promo (jours)</label>
                             <input type='number' id='settingEmailPromoDays' class='w-full p-2 border rounded text-sm' placeholder='7'>
                         </div>
                     </div>
                     <div class='flex gap-2 flex-wrap'>
                         <button onclick='saveEmailSettings()' class='bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm'>Enregistrer</button>
-                        <button onclick='testEmailConnection()' class='bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm'>ðŸ”Œ Tester la connexion</button>
+                        <button onclick='testEmailConnection()' class='bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded text-sm'>🔌 Tester la connexion</button>
                     </div>
-                    <p id='emailSettingsSaved' class='text-green-600 text-sm hidden'>âœ“ Config email sauvegardÃ©e</p>
+                    <p id='emailSettingsSaved' class='text-green-600 text-sm hidden'>✓ Config email sauvegardée</p>
                     <p id='emailTestResult' class='text-sm hidden'></p>
                 </div>
             </div>
 
-            <!-- â”€â”€ OAuth2 Microsoft â”€â”€ -->
+            <!-- ── OAuth2 Microsoft ── -->
             <div class='mt-8 pt-6 border-t'>
-                <h2 class='text-lg font-semibold mb-1'>ðŸ” OAuth2 Microsoft <span class='text-sm font-normal text-gray-400'>(Microsoft 365 pro / Azure)</span></h2>
-                <p class='text-xs text-gray-500 mb-1'>Pour les comptes <b>@hotmail/@live/@outlook.com personnels</b>, prÃ©fÃ©rez le <b>Mot de passe d'application</b> (voir guide Outlook ci-dessus).<br>OAuth2 Microsoft est destinÃ© aux comptes d'entreprise ou aux dÃ©veloppeurs disposant d'un tenant Azure.</p>
+                <h2 class='text-lg font-semibold mb-1'>🔐 OAuth2 Microsoft <span class='text-sm font-normal text-gray-400'>(Microsoft 365 pro / Azure)</span></h2>
+                <p class='text-xs text-gray-500 mb-1'>Pour les comptes <b>@hotmail/@live/@outlook.com personnels</b>, préférez le <b>Mot de passe d'application</b> (voir guide Outlook ci-dessus).<br>OAuth2 Microsoft est destiné aux comptes d'entreprise ou aux développeurs disposant d'un tenant Azure.</p>
                 <div class='space-y-3 mt-3'>
                     <div class='grid grid-cols-2 gap-3'>
                         <div>
@@ -563,18 +563,18 @@
                     </div>
                     <div class='flex gap-3 items-center flex-wrap'>
                         <button onclick='saveOauthSettings()' class='bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 text-sm'>Enregistrer</button>
-                        <button onclick='startOauthFlow("microsoft")' id='btnOauthConnect' class='bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium'>ðŸ”‘ Connecter Outlook/Microsoft 365</button>
-                        <button onclick='oauthDisconnect("microsoft")' id='btnOauthDisconnect' class='hidden bg-red-50 text-red-600 px-4 py-2 rounded hover:bg-red-100 text-sm'>DÃ©connecter</button>
+                        <button onclick='startOauthFlow("microsoft")' id='btnOauthConnect' class='bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm font-medium'>🔑 Connecter Outlook/Microsoft 365</button>
+                        <button onclick='oauthDisconnect("microsoft")' id='btnOauthDisconnect' class='hidden bg-red-50 text-red-600 px-4 py-2 rounded hover:bg-red-100 text-sm'>Déconnecter</button>
                         <span id='oauthStatus' class='text-sm'></span>
                     </div>
-                    <p id='oauthSettingsSaved' class='text-green-600 text-sm hidden'>âœ“ Config OAuth Microsoft sauvegardÃ©e</p>
+                    <p id='oauthSettingsSaved' class='text-green-600 text-sm hidden'>✓ Config OAuth Microsoft sauvegardée</p>
                 </div>
             </div>
 
-            <!-- â”€â”€ OAuth2 Google â”€â”€ -->
+            <!-- ── OAuth2 Google ── -->
             <div class='mt-8 pt-6 border-t'>
-                <h2 class='text-lg font-semibold mb-1'>ðŸ”´ OAuth2 Google <span class='text-sm font-normal text-gray-400'>(Gmail â€” obligatoire)</span></h2>
-                <p class='text-xs text-gray-500 mb-3'>Google n'accepte plus l'auth basique. Voir le <button onclick='showGuide("gmail")' class='text-blue-500 underline'>guide Gmail</button> ci-dessus pour crÃ©er votre app Google Cloud Console (gratuit, sans carte de crÃ©dit).</p>
+                <h2 class='text-lg font-semibold mb-1'>🔴 OAuth2 Google <span class='text-sm font-normal text-gray-400'>(Gmail — obligatoire)</span></h2>
+                <p class='text-xs text-gray-500 mb-3'>Google n'accepte plus l'auth basique. Voir le <button onclick='showGuide("gmail")' class='text-blue-500 underline'>guide Gmail</button> ci-dessus pour créer votre app Google Cloud Console (gratuit, sans carte de crédit).</p>
                 <div class='space-y-3'>
                     <div class='grid grid-cols-2 gap-3'>
                         <div>
@@ -592,11 +592,11 @@
                     </div>
                     <div class='flex gap-3 items-center flex-wrap'>
                         <button onclick='saveGoogleOauthSettings()' class='bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-800 text-sm'>Enregistrer</button>
-                        <button onclick='startOauthFlow("google")' id='btnGoogleConnect' class='bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 text-sm font-medium'>ðŸ”‘ Connecter mon compte Gmail</button>
-                        <button onclick='oauthDisconnect("google")' id='btnGoogleDisconnect' class='hidden bg-red-50 text-red-600 px-4 py-2 rounded hover:bg-red-100 text-sm'>DÃ©connecter</button>
+                        <button onclick='startOauthFlow("google")' id='btnGoogleConnect' class='bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 text-sm font-medium'>🔑 Connecter mon compte Gmail</button>
+                        <button onclick='oauthDisconnect("google")' id='btnGoogleDisconnect' class='hidden bg-red-50 text-red-600 px-4 py-2 rounded hover:bg-red-100 text-sm'>Déconnecter</button>
                         <span id='googleOauthStatus' class='text-sm'></span>
                     </div>
-                    <p id='googleOauthSettingsSaved' class='text-green-600 text-sm hidden'>âœ“ Config OAuth Google sauvegardÃ©e</p>
+                    <p id='googleOauthSettingsSaved' class='text-green-600 text-sm hidden'>✓ Config OAuth Google sauvegardée</p>
                 </div>
             </div>
         </div>
