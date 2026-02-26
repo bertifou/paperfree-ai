@@ -13,7 +13,7 @@ from sqlalchemy import or_
 from pydantic import BaseModel
 
 from database import Document, User
-from core.security import get_db, get_current_user, log_security_event
+from core.security import get_db, get_current_user, log_security_event, create_file_token, verify_file_token
 from core.config import UPLOAD_DIR
 from core.validators import validate_file_upload, validate_file_content, sanitize_filename
 from core.middleware import limiter
@@ -197,12 +197,40 @@ def delete_document(
 # Téléchargement fichiers
 # ---------------------------------------------------------------------------
 
-@router.get("/documents/{doc_id}/file")
-def download_document(
+@router.get("/documents/{doc_id}/file-token")
+def get_file_token(
     doc_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """
+    Génère un token signé 60s pour accéder au fichier sans header Authorization.
+    Utilisé par le frontend pour construire l'URL de l'<iframe>.
+    """
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document introuvable")
+    token = create_file_token(doc_id=doc_id, username=current_user.username)
+    return {"token": token, "expires_in": 60}
+
+
+@router.get("/documents/{doc_id}/file")
+def download_document(
+    doc_id: int,
+    token: str = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Sert le fichier original. Accepte :
+    - Bearer JWT dans Authorization (téléchargement classique)
+    - ?token= signé (aperçu iframe, téléchargement mobile)
+    Le token query param est vérifié en priorité ; si absent, le Bearer est utilisé.
+    """
+    if token:
+        verify_file_token(token, doc_id)
+    # Si pas de token, get_current_user a déjà validé le Bearer (ou levé 401)
+
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document introuvable")
@@ -215,9 +243,16 @@ def download_document(
 @router.get("/documents/{doc_id}/pdf")
 def get_document_pdf(
     doc_id: int,
+    token: str = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    """
+    Sert le PDF généré. Même logique d'authentification que /file.
+    """
+    if token:
+        verify_file_token(token, doc_id)
+
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
         raise HTTPException(status_code=404, detail="Document introuvable")

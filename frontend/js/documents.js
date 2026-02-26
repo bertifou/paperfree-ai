@@ -45,9 +45,14 @@ async function openDoc(id) {
 
     const isPdf        = doc.filename.toLowerCase().endsWith('.pdf');
     const hasPdfVersion = !!doc.pdf_filename;
-    const fileUrl      = `${API_URL}/documents/${id}/file`;
-    const pdfUrl       = `${API_URL}/documents/${id}/pdf`;
     const color        = CATEGORY_COLORS[doc.category] || 'bg-gray-100 text-gray-500';
+
+    // Obtenir un token signé 60s pour l'iframe (évite le 401 sur navigation sans Bearer)
+    const tokenRes  = await fetch(`${API_URL}/documents/${id}/file-token`, { headers: { 'Authorization': authHeader } });
+    const tokenData = await tokenRes.json();
+    const fileToken = tokenData.token || '';
+    const fileUrl   = `${API_URL}/documents/${id}/file?token=${encodeURIComponent(fileToken)}`;
+    const pdfUrl    = `${API_URL}/documents/${id}/pdf?token=${encodeURIComponent(fileToken)}`;
 
     const pipelineBadge = (() => {
         let sources = doc.pipeline_sources;

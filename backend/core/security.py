@@ -106,3 +106,49 @@ def log_security_event(event_type: str, details: dict, request: Request = None):
     """Log des événements de sécurité importants."""
     ip = request.client.host if request else "unknown"
     logger.warning(f"SECURITY [{event_type}] IP={ip} | {details}")
+
+
+# ---------------------------------------------------------------------------
+# Tokens temporaires pour l'aperçu de fichiers (signed URL)
+# ---------------------------------------------------------------------------
+
+FILE_TOKEN_EXPIRE_SECONDS = 60  # Expire après 60 secondes
+
+
+def create_file_token(doc_id: int, username: str) -> str:
+    """
+    Génère un JWT signé à usage unique et courte durée pour servir un fichier
+    sans header Authorization (ex: aperçu dans une <iframe>).
+    """
+    expire = datetime.utcnow() + timedelta(seconds=FILE_TOKEN_EXPIRE_SECONDS)
+    payload = {
+        "sub":    username,
+        "doc_id": doc_id,
+        "type":   "file",
+        "exp":    expire,
+    }
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+
+def verify_file_token(token: str, doc_id: int) -> str:
+    """
+    Vérifie un token de fichier et retourne le username si valide.
+    Lève HTTPException 401 si invalide ou expiré, 403 si le doc_id ne correspond pas.
+    """
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError as e:
+        logger.warning(f"File token invalid: {e}")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token invalide ou expiré")
+
+    if payload.get("type") != "file":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Type de token incorrect")
+
+    if payload.get("doc_id") != doc_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Token non autorisé pour ce document")
+
+    username = payload.get("sub")
+    if not username:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token invalide")
+
+    return username
