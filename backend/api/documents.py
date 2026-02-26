@@ -241,7 +241,14 @@ def download_document(
     file_path = os.path.join(UPLOAD_DIR, doc.filename)
     if not os.path.exists(file_path):
         raise HTTPException(status_code=404, detail="Fichier physique introuvable")
-    return FileResponse(file_path, filename=doc.filename)
+
+    # ?token= → aperçu inline (iframe) | Bearer → téléchargement forcé
+    disposition = "inline" if token else "attachment"
+    return FileResponse(
+        file_path,
+        filename=doc.filename,
+        headers={"Content-Disposition": f'{disposition}; filename="{doc.filename}"'},
+    )
 
 
 @router.get("/documents/{doc_id}/pdf")
@@ -270,7 +277,15 @@ def get_document_pdf(
     pdf_path = os.path.join(UPLOAD_DIR, doc.pdf_filename)
     if not os.path.exists(pdf_path):
         raise HTTPException(status_code=404, detail="Fichier PDF introuvable")
-    return FileResponse(pdf_path, filename=doc.pdf_filename, media_type="application/pdf")
+
+    # ?token= → aperçu inline (iframe) | Bearer → téléchargement forcé
+    disposition = "inline" if token else "attachment"
+    return FileResponse(
+        pdf_path,
+        filename=doc.pdf_filename,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'{disposition}; filename="{doc.pdf_filename}"'},
+    )
 
 
 # ---------------------------------------------------------------------------
