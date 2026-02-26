@@ -195,17 +195,26 @@ def test_rate_limit_upload():
 # ---------------------------------------------------------------------------
 
 def test_security_headers():
-    """Vérifier la présence des headers de sécurité."""
+    """Vérifier la présence des headers de sécurité sur les routes non-fichiers."""
     response = client.get("/status")
-    
+
     assert "X-Content-Type-Options" in response.headers
     assert response.headers["X-Content-Type-Options"] == "nosniff"
-    
+
+    # /status n'est pas une route fichier → doit bloquer les iframes
     assert "X-Frame-Options" in response.headers
     assert response.headers["X-Frame-Options"] == "DENY"
-    
+
     assert "Strict-Transport-Security" in response.headers
     assert "Content-Security-Policy" in response.headers
+    assert "frame-ancestors 'none'" in response.headers["Content-Security-Policy"]
+
+
+def test_security_headers_files_embeddable():
+    """Les routes /files/ doivent autoriser l'intégration iframe depuis la même origine."""
+    response = client.get("/files/test.pdf", headers={"Authorization": ""})
+    # 401/404 attendu mais les headers de sécurité sont quand même présents
+    assert "X-Frame-Options" not in response.headers or response.headers["X-Frame-Options"] == "SAMEORIGIN"
 
 
 # ---------------------------------------------------------------------------

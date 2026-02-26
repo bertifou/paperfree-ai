@@ -17,28 +17,53 @@ limiter = Limiter(key_func=get_remote_address)
 
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    """Ajoute les headers de sécurité HTTP à toutes les réponses."""
+    """Ajoute les headers de sécurité HTTP à toutes les réponses.
     
+    Les fichiers servis via /files/ autorisent l'intégration en iframe
+    depuis la même origine (pour l'aperçu PDF intégré dans l'UI).
+    """
+
+    # Préfixes de routes où les fichiers sont servis dans une iframe
+    _EMBEDDABLE_PREFIXES = ("/files/", "/static/")
+
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
-        
-        # Headers de sécurité
+
+        path = request.url.path
+        is_embeddable = any(path.startswith(p) for p in self._EMBEDDABLE_PREFIXES)
+
+        # Headers communs à toutes les réponses
         response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        response.headers["Content-Security-Policy"] = (
-            "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
-            "style-src 'self' 'unsafe-inline'; "
-            "img-src 'self' data: blob:; "
-            "font-src 'self'; "
-            "connect-src 'self'; "
-            "frame-ancestors 'none';"
-        )
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
-        
+
+        if is_embeddable:
+            # Autorise l'intégration en iframe depuis la même origine uniquement
+            response.headers["X-Frame-Options"] = "SAMEORIGIN"
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: blob:; "
+                "font-src 'self'; "
+                "connect-src 'self'; "
+                "frame-ancestors 'self';"
+            )
+        else:
+            # Bloque toute intégration en iframe pour les autres routes
+            response.headers["X-Frame-Options"] = "DENY"
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: blob:; "
+                "font-src 'self'; "
+                "connect-src 'self'; "
+                "frame-ancestors 'none';"
+            )
+
         return response
 
 
