@@ -52,6 +52,7 @@ function showTab(name) {
 
     if (name === 'email')    { loadEmailFolders(); loadEmails(); loadEmailLogs(); }
     if (name === 'classeur') { renderClasseur(); }
+    if (name === 'settings') { initRulesSection(); }
 }
 
 // ─── Guides provider email ────────────────────────────────────────────────────

@@ -384,6 +384,47 @@
             </div>
 
 
+            <!-- ── RÈGLES DE CLASSIFICATION ── -->
+            <div class='mt-8 pt-6 border-t'>
+                <h2 class='text-lg font-semibold mb-1'>🏷 Règles de classification personnalisées</h2>
+                <p class='text-xs text-gray-500 mb-4'>Ces règles s'appliquent <b>après</b> l'analyse LLM et permettent de corriger la catégorie automatiquement selon vos préférences (ex: Pharmacie → Impôts).</p>
+
+                <!-- Formulaire ajout -->
+                <div class='bg-gray-50 border rounded-xl p-4 mb-4'>
+                    <h3 class='text-sm font-semibold text-gray-700 mb-3'>➕ Nouvelle règle</h3>
+                    <div class='grid grid-cols-1 gap-3 sm:grid-cols-2'>
+                        <div>
+                            <label class='block text-xs font-medium text-gray-600 mb-1'>Nom de la règle</label>
+                            <input type='text' id='ruleNameInput' class='w-full p-2 border rounded text-sm' placeholder='ex: Pharmacie → Impôts'>
+                        </div>
+                        <div>
+                            <label class='block text-xs font-medium text-gray-600 mb-1'>Champ à analyser</label>
+                            <select id='ruleFieldSelect' class='w-full p-2 border rounded text-sm'>
+                                <option value='issuer'>🏢 Émetteur (recommandé)</option>
+                                <option value='content'>📄 Contenu du document</option>
+                                <option value='category'>🏷 Catégorie LLM</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class='block text-xs font-medium text-gray-600 mb-1'>Contient le mot</label>
+                            <input type='text' id='ruleValueInput' class='w-full p-2 border rounded text-sm' placeholder='ex: pharmacie'>
+                        </div>
+                        <div>
+                            <label class='block text-xs font-medium text-gray-600 mb-1'>→ Reclasser en</label>
+                            <select id='ruleCategorySelect' class='w-full p-2 border rounded text-sm'></select>
+                        </div>
+                        <div>
+                            <label class='block text-xs font-medium text-gray-600 mb-1'>Priorité (plus élevé = prioritaire)</label>
+                            <input type='number' id='rulePriorityInput' value='0' min='0' max='100' class='w-full p-2 border rounded text-sm'>
+                        </div>
+                    </div>
+                    <button onclick='addRule()' class='mt-3 bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded font-medium'>➕ Ajouter la règle</button>
+                </div>
+
+                <!-- Liste des règles -->
+                <div id='rulesContainer' class='space-y-2'></div>
+            </div>
+
             <!-- ── GUIDE CONNEXION EMAIL ── -->
             <div class='mt-8 pt-6 border-t'>
                 <h2 class='text-lg font-semibold mb-1'>📧 Connexion Email — Quel provider utilisez-vous ?</h2>
@@ -609,6 +650,7 @@
 <script src='js/documents.js'></script>
 <script src='js/classeur.js'></script>
 <script src='js/settings.js'></script>
+<script src='js/rules.js'></script>
 <script src='js/email.js'></script>
 <script>
 checkStatus();

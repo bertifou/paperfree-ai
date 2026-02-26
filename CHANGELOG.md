@@ -7,6 +7,22 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/lang/fr/).
 
 ---
 
+## [Unreleased] - 2026-02-26
+
+### 🆕 Règles de classification personnalisées
+
+- Nouvelle table `ClassificationRule` en base de données
+- Les règles s'appliquent **après** l'analyse LLM et peuvent overrider la catégorie
+- Champs supportés : Émetteur (`issuer`), Contenu (`content`), Catégorie LLM (`category`)
+- Priorité configurable (la règle de priorité la plus haute l'emporte)
+- Activation / désactivation individuelle par règle
+- Exemple préinstallé : "Pharmacie → Impôts" (émetteur contient "pharmacie")
+- Nouveaux endpoints REST : `GET/POST /rules`, `PUT/DELETE /rules/{id}`
+- Interface de gestion dans l'onglet Paramètres → section "Règles de classification"
+- Nouveau fichier : `frontend/js/rules.js`
+
+---
+
 ## [0.5.0] - 2025-02-25
 
 ### 🔒 Ajouté - Sécurité

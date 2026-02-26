@@ -43,6 +43,19 @@ class Setting(Base):
     value = Column(String)
 
 
+class ClassificationRule(Base):
+    """Règles personnalisées pour reclassifier les documents après l'analyse LLM."""
+    __tablename__ = "classification_rules"
+    id             = Column(Integer, primary_key=True, index=True)
+    name           = Column(String, nullable=False)          # Nom lisible de la règle
+    match_field    = Column(String, nullable=False)          # 'issuer' | 'content' | 'filename' | 'category'
+    match_value    = Column(String, nullable=False)          # Valeur à chercher (insensible à la casse)
+    target_category = Column(String, nullable=False)         # Catégorie cible
+    priority       = Column(Integer, default=0)              # Plus grand = prioritaire
+    enabled        = Column(String, default="true")          # 'true' | 'false'
+    created_at     = Column(DateTime, default=datetime.datetime.utcnow)
+
+
 class EmailLog(Base):
     """Historique des actions automatiques du module email."""
     __tablename__ = "email_logs"
@@ -70,6 +83,27 @@ def _run_migrations():
         conn.commit()
     if "pipeline_sources" not in existing_cols:
         cur.execute("ALTER TABLE documents ADD COLUMN pipeline_sources TEXT")
+        conn.commit()
+    # Migration : table classification_rules
+    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='classification_rules'")
+    if not cur.fetchone():
+        cur.execute("""
+            CREATE TABLE classification_rules (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                match_field TEXT NOT NULL,
+                match_value TEXT NOT NULL,
+                target_category TEXT NOT NULL,
+                priority INTEGER DEFAULT 0,
+                enabled TEXT DEFAULT 'true',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        # Règle d'exemple : pharmacie → Impôts
+        cur.execute("""
+            INSERT INTO classification_rules (name, match_field, match_value, target_category, priority)
+            VALUES ('Pharmacie → Impôts', 'issuer', 'pharmacie', 'Impôts', 10)
+        """)
         conn.commit()
     conn.close()
 

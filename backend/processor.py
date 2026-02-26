@@ -450,6 +450,50 @@ def _merge_analyses(vision_json: dict, ocr_json: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Règles de reclassification personnalisées
+# ---------------------------------------------------------------------------
+
+def apply_classification_rules(analysis: dict, text: str = "") -> dict:
+    """Applique les règles de reclassification personnalisées après l'analyse LLM."""
+    try:
+        from database import SessionLocal, ClassificationRule
+        db = SessionLocal()
+        rules = (
+            db.query(ClassificationRule)
+            .filter(ClassificationRule.enabled == "true")
+            .order_by(ClassificationRule.priority.desc())
+            .all()
+        )
+        db.close()
+
+        for rule in rules:
+            field = rule.match_field
+            value = rule.match_value.lower().strip()
+
+            if field == "issuer":
+                haystack = (analysis.get("issuer") or "").lower()
+            elif field == "category":
+                haystack = (analysis.get("category") or "").lower()
+            elif field == "content":
+                haystack = text.lower()
+            else:
+                continue
+
+            if value in haystack:
+                original = analysis.get("category")
+                analysis["category"] = rule.target_category
+                logger.info(
+                    f"[rules] Règle '{rule.name}' appliquée : {original} → {rule.target_category}"
+                )
+                break  # La règle de priorité la plus haute gagne
+
+    except Exception as e:
+        logger.warning(f"[rules] Erreur lors de l'application des règles : {e}")
+
+    return analysis
+
+
+# ---------------------------------------------------------------------------
 # Point d'entrée principal — nouveau pipeline
 # ---------------------------------------------------------------------------
 
@@ -514,6 +558,7 @@ def process_document(file_path: str) -> tuple[str, dict]:
 
             # Fusion des deux JSON
             final_result = _merge_analyses(vision_result, ocr_json)
+            final_result = apply_classification_rules(final_result, corrected_text or extracted_text)
             return corrected_text or extracted_text, final_result
 
         # ── Vision DÉSACTIVÉE — pipeline OCR classique ──────────────────────
@@ -528,6 +573,7 @@ def process_document(file_path: str) -> tuple[str, dict]:
         analysis = analyze_with_llm(corrected_text, config)
         if confidence < 60 and is_image:
             analysis["ocr_confidence"] = round(confidence, 1)
+        analysis = apply_classification_rules(analysis, corrected_text)
         return corrected_text, analysis
 
     finally:
