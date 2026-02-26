@@ -211,10 +211,12 @@ def test_security_headers():
 
 
 def test_security_headers_files_embeddable():
-    """Les routes /files/ doivent autoriser l'intégration iframe depuis la même origine."""
-    response = client.get("/files/test.pdf", headers={"Authorization": ""})
-    # 401/404 attendu mais les headers de sécurité sont quand même présents
-    assert "X-Frame-Options" not in response.headers or response.headers["X-Frame-Options"] == "SAMEORIGIN"
+    """Les routes /files/ et /documents/{id}/file|pdf doivent autoriser l'intégration iframe depuis la même origine."""
+    for path in ["/files/test.pdf", "/documents/1/file", "/documents/1/pdf"]:
+        response = client.get(path, headers={"Authorization": ""})
+        # 401/404 attendu mais les headers de sécurité sont quand même présents
+        assert "X-Frame-Options" not in response.headers or response.headers["X-Frame-Options"] == "SAMEORIGIN", \
+            f"X-Frame-Options incorrect pour {path}: {response.headers.get('X-Frame-Options')}"
 
 
 # ---------------------------------------------------------------------------

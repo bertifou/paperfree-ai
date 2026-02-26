@@ -23,14 +23,20 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     depuis la même origine (pour l'aperçu PDF intégré dans l'UI).
     """
 
-    # Préfixes de routes où les fichiers sont servis dans une iframe
+    # Préfixes/suffixes de routes où les fichiers sont servis dans une iframe
+    # /files/, /static/ : fichiers statiques
+    # /documents/{id}/file et /documents/{id}/pdf : aperçus inline
     _EMBEDDABLE_PREFIXES = ("/files/", "/static/")
+    _EMBEDDABLE_SUFFIXES = ("/file", "/pdf")
 
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
 
         path = request.url.path
-        is_embeddable = any(path.startswith(p) for p in self._EMBEDDABLE_PREFIXES)
+        is_embeddable = (
+            any(path.startswith(p) for p in self._EMBEDDABLE_PREFIXES)
+            or any(path.endswith(s) for s in self._EMBEDDABLE_SUFFIXES)
+        )
 
         # Headers communs à toutes les réponses
         response.headers["X-Content-Type-Options"] = "nosniff"
