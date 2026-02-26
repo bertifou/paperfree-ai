@@ -8,6 +8,7 @@ import logging
 
 from fastapi import APIRouter, UploadFile, File, BackgroundTasks, Depends, Query, HTTPException, Request
 from fastapi.responses import FileResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 from pydantic import BaseModel
@@ -219,17 +220,20 @@ def download_document(
     doc_id: int,
     token: str = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
     """
     Sert le fichier original. Accepte :
     - Bearer JWT dans Authorization (téléchargement classique)
     - ?token= signé (aperçu iframe, téléchargement mobile)
-    Le token query param est vérifié en priorité ; si absent, le Bearer est utilisé.
     """
     if token:
         verify_file_token(token, doc_id)
-    # Si pas de token, get_current_user a déjà validé le Bearer (ou levé 401)
+    elif credentials:
+        from core.security import verify_token
+        verify_token(credentials.credentials, "access")
+    else:
+        raise HTTPException(status_code=401, detail="Authentification requise", headers={"WWW-Authenticate": "Bearer"})
 
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
@@ -245,13 +249,18 @@ def get_document_pdf(
     doc_id: int,
     token: str = Query(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
+    credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
 ):
     """
     Sert le PDF généré. Même logique d'authentification que /file.
     """
     if token:
         verify_file_token(token, doc_id)
+    elif credentials:
+        from core.security import verify_token
+        verify_token(credentials.credentials, "access")
+    else:
+        raise HTTPException(status_code=401, detail="Authentification requise", headers={"WWW-Authenticate": "Bearer"})
 
     doc = db.query(Document).filter(Document.id == doc_id).first()
     if not doc:
