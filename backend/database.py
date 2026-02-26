@@ -107,10 +107,32 @@ def _run_migrations():
         """)
         conn.commit()
     else:
-        # Nettoyer les anciennes colonnes monolithiques si présentes (migration v1→v2)
+        # Si l'ancienne structure monolithique existe (colonnes match_field/match_value), recréer proprement
         cur.execute("PRAGMA table_info(classification_rules)")
-        cols = {row[1] for row in cur.fetchall()}
-        # Rien à supprimer en SQLite (pas de DROP COLUMN avant 3.35), on ignore
+        old_cols = {row[1] for row in cur.fetchall()}
+        if "match_field" in old_cols:
+            # Sauvegarder les anciennes règles pour les migrer
+            cur.execute("SELECT id, name, match_field, match_value, target_category, priority, enabled FROM classification_rules")
+            old_rules = cur.fetchall()
+            cur.execute("DROP TABLE classification_rules")
+            cur.execute("""
+                CREATE TABLE classification_rules (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    name TEXT NOT NULL,
+                    target_category TEXT NOT NULL,
+                    priority INTEGER DEFAULT 0,
+                    enabled TEXT DEFAULT 'true',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                )
+            """)
+            # Réinsérer les anciennes règles (sans les colonnes supprimées)
+            for row in old_rules:
+                cur.execute(
+                    "INSERT INTO classification_rules (id, name, target_category, priority, enabled) VALUES (?,?,?,?,?)",
+                    (row[0], row[1], row[4], row[5], row[6])
+                )
+            conn.commit()
+            # Les conditions seront créées dans le bloc rule_conditions ci-dessous
 
     cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='rule_conditions'")
     if not cur.fetchone():
@@ -122,17 +144,20 @@ def _run_migrations():
                 match_value TEXT
             )
         """)
-        # Règle d'exemple : Pharmacie → Impôts (catégorie LLM=Santé ET montant non nul)
-        cur.execute("""
-            INSERT INTO classification_rules (name, target_category, priority)
-            VALUES ('Pharmacie → Impôts', 'Impôts', 10)
-        """)
-        rule_id = cur.lastrowid
-        cur.execute("INSERT INTO rule_conditions (rule_id, match_field, match_value) VALUES (?, ?, ?)",
-                    (rule_id, 'issuer', 'pharmacie'))
-        cur.execute("INSERT INTO rule_conditions (rule_id, match_field, match_value) VALUES (?, ?, ?)",
-                    (rule_id, 'amount_not_null', None))
         conn.commit()
+        # Règle d'exemple si aucune règle n'existe encore
+        cur.execute("SELECT COUNT(*) FROM classification_rules")
+        if cur.fetchone()[0] == 0:
+            cur.execute("""
+                INSERT INTO classification_rules (name, target_category, priority)
+                VALUES ('Pharmacie → Impôts', 'Impôts', 10)
+            """)
+            rule_id = cur.lastrowid
+            cur.execute("INSERT INTO rule_conditions (rule_id, match_field, match_value) VALUES (?, ?, ?)",
+                        (rule_id, 'issuer', 'pharmacie'))
+            cur.execute("INSERT INTO rule_conditions (rule_id, match_field, match_value) VALUES (?, ?, ?)",
+                        (rule_id, 'amount_not_null', None))
+            conn.commit()
     conn.close()
 
 _run_migrations()
