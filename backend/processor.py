@@ -570,6 +570,11 @@ def process_document(file_path: str) -> tuple[str, dict]:
 
             # Fusion des deux JSON
             final_result = _merge_analyses(vision_result, ocr_json)
+            # Sauvegarder le texte corrigé Vision Fusion (pas le texte brut voie a)
+            final_result["extracted_text"] = corrected_text or extracted_text
+            # Distinguer si Vision Fusion a été utilisée
+            if ocr_text.strip() and config.get("ocr_vision_fusion", True):
+                final_result["pipeline_sources"] = ["vision", "ocr+vision_fusion"]
             final_result = apply_classification_rules(final_result, corrected_text or extracted_text)
             return corrected_text or extracted_text, final_result
 
