@@ -40,19 +40,20 @@ Score de confiance OCR fourni : {confidence}% — plus il est bas, plus la corre
 
 
 # ---------------------------------------------------------------------------
-# Correction OCR avec fusion vision — image + texte OCR + contexte JSON
+# Correction OCR avec fusion vision — image + vision manuscrit + vision imprimé + texte OCR
 # Variables : {confidence}, {vision_context}, {ocr_text}
 # ---------------------------------------------------------------------------
 
 OCR_VISION_FUSION_PROMPT = """Tu es un expert en consolidation factuelle de documents administratifs français.
 
-Tu disposes de trois sources :
+Tu disposes de quatre sources :
 1. L'image originale du document (référence principale)
-2. Une analyse préliminaire par vision
-3. Un texte OCR imparfait
+2. Une analyse par vision de texte manuscrit
+3. Une analyse par vision de texte imprimé
+4. Un texte OCR imparfait
 
 Objectif :
-Produire une version textuelle factuellement correcte du document en consolidant les trois sources.
+Produire une version textuelle factuellement correcte du document en consolidant les quatre sources.
 
 Priorité :
 - Exactitude des informations factuelles avant fidélité visuelle.
@@ -61,14 +62,16 @@ Priorité :
 
 Hiérarchie de fiabilité :
 1. Image originale
-2. Analyse vision
-3. Texte OCR
+2. Analyse vision manuscrite
+3. Analyse vision imprimée
+4. Texte OCR
 
 Règles :
 - Corriger les erreurs de lecture évidentes.
 - Résoudre les divergences en privilégiant la version la plus cohérente avec l'image.
+- Les éléments manuscrits (annotations, corrections, posologies, dates) priment sur le texte imprimé en cas de divergence.
 - Vérifier la cohérence entre dates, montants et références.
-- Ne jamais inventer une information absente des trois sources.
+- Ne jamais inventer une information absente des quatre sources.
 - Si une information est ambiguë et non résolvable, conserver la version la plus probable issue de l'image.
 - Ne pas résumer.
 - Ne pas reformuler inutilement.
@@ -81,7 +84,12 @@ Priorité absolue à l’exactitude des :
 • Noms d’organismes
 
 Score de confiance OCR : {confidence}%
-Contexte vision : {vision_context}
+
+Vision — texte manuscrit :
+{vision_context_handwritten}
+
+Vision — texte imprimé :
+{vision_context_printed}
 
 Texte OCR :
 {ocr_text}
@@ -112,7 +120,7 @@ Réponds UNIQUEMENT avec un objet JSON strictement valide :
   "date": "date principale visible (manuscrite prioritaire) au format YYYY-MM-DD ou null",
   "amount": "montant principal en chiffres avec devise ou null",
   "issuer": "organisme émetteur ou null",
-  "extracted_text_printed": "texte imprimé visible (500 mots max)",
+  "extracted_text_printed": "texte imprimé visible ou null",
   "extracted_text_handwritten": "transcription fidèle des éléments manuscrits ou null"
 }
 Règles strictes :

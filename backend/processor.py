@@ -292,10 +292,14 @@ def correct_ocr_with_vision_fusion(
     try:
         mime, b64 = _image_to_base64(file_path)
         client, model = _get_vision_client(config)
-        ctx_str = json.dumps(vision_context, ensure_ascii=False) if vision_context else "Non disponible"
+        ctx_printed = vision_context.get("extracted_text_printed", "Non disponible")[:500] if vision_context else "Non disponible"
+        ctx_handwritten = vision_context.get("extracted_text_handwritten") or "Aucun élément manuscrit détecté"
+        if len(ctx_handwritten) > 500:
+            ctx_handwritten = ctx_handwritten[:500]
         prompt = OCR_VISION_FUSION_PROMPT.format(
             confidence=f"{confidence:.0f}",
-            vision_context=ctx_str[:500],
+            vision_context_printed=ctx_printed,
+            vision_context_handwritten=ctx_handwritten,
             ocr_text=ocr_text[:3000],
         )
         response = client.chat.completions.create(
