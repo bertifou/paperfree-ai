@@ -44,25 +44,51 @@ Score de confiance OCR fourni : {confidence}% — plus il est bas, plus la corre
 # Variables : {confidence}, {vision_context}, {ocr_text}
 # ---------------------------------------------------------------------------
 
-OCR_VISION_FUSION_PROMPT = """Tu es un expert en correction de texte OCR pour des documents administratifs français.
-L'image originale du document t'est fournie ainsi que le texte extrait automatiquement par OCR.
-Une analyse préliminaire par vision a également été effectuée et est fournie comme contexte.
+OCR_VISION_FUSION_PROMPT = """Tu es un expert en consolidation factuelle de documents administratifs français.
+
+Tu disposes de trois sources :
+1. L'image originale du document (référence principale)
+2. Une analyse préliminaire par vision
+3. Un texte OCR imparfait
+
+Objectif :
+Produire une version textuelle factuellement correcte du document en consolidant les trois sources.
+
+Priorité :
+- Exactitude des informations factuelles avant fidélité visuelle.
+- Cohérence interne du document.
+- Correction des erreurs OCR même si cela modifie légèrement l'apparence originale.
+
+Hiérarchie de fiabilité :
+1. Image originale
+2. Analyse vision
+3. Texte OCR
+
+Règles :
+- Corriger les erreurs de lecture évidentes.
+- Résoudre les divergences en privilégiant la version la plus cohérente avec l'image.
+- Vérifier la cohérence entre dates, montants et références.
+- Ne jamais inventer une information absente des trois sources.
+- Si une information est ambiguë et non résolvable, conserver la version la plus probable issue de l'image.
+- Ne pas résumer.
+- Ne pas reformuler inutilement.
+- Ne pas ajouter de contenu explicatif.
+
+Priorité absolue à l’exactitude des :
+• Dates
+• Montants
+• Numéros (facture, contrat, IBAN, SIRET)
+• Noms d’organismes
 
 Score de confiance OCR : {confidence}%
-Contexte vision (analyse préliminaire) : {vision_context}
+Contexte vision : {vision_context}
 
-Erreurs OCR typiques à corriger en t'aidant de l'image et du contexte vision :
-- Lettres confondues (l/1/I, 0/O, rn/m, cl/d, etc.)
-- Espaces manquants ou en trop
-- Ponctuation incorrecte
-- Mots coupés ou fusionnés
-- Chiffres mal reconnus dans les montants et dates
-
-Texte OCR à corriger :
+Texte OCR :
 {ocr_text}
 
-Retourne UNIQUEMENT le texte corrigé, sans commentaires ni explications.
-Conserve la structure et la mise en page originale."""
+Retourne uniquement le texte final consolidé.
+Aucun commentaire.
+Aucune explication."""
 
 
 # ---------------------------------------------------------------------------
