@@ -19,6 +19,7 @@ import logging
 from datetime import datetime, timezone, timedelta
 from email.utils import parsedate_to_datetime
 from typing import Optional
+from prompts import EMAIL_CLASSIFIER_PROMPT
 
 logger = logging.getLogger(__name__)
 
@@ -396,16 +397,7 @@ def _classify_email_llm(subject: str, sender: str, llm_config: dict) -> str:
         response = client.chat.completions.create(
             model=llm_config["model"],
             messages=[
-                {"role": "system", "content": (
-                    "Tu es un classificateur d'emails. "
-                    "Réponds UNIQUEMENT avec UN seul mot parmi : "
-                    "Promotionnel, Facture, Notification, Personnel, Autre.\n"
-                    "Promotionnel = newsletter, pub, offre commerciale, soldes, marketing.\n"
-                    "Facture = reçu, invoice, confirmation de paiement.\n"
-                    "Notification = alerte système, 2FA, confirmation inscription.\n"
-                    "Personnel = échange humain direct.\n"
-                    "Autre = tout le reste."
-                )},
+                {"role": "system", "content": EMAIL_CLASSIFIER_PROMPT},
                 {"role": "user", "content": f"Sujet: {subject}\nExpéditeur: {sender}"},
             ],
             temperature=0,

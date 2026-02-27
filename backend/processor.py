@@ -12,6 +12,12 @@ from enhance import enhance_image
 import PyPDF2
 from openai import OpenAI
 from dotenv import load_dotenv
+from prompts import (
+    SYSTEM_PROMPT,
+    OCR_CORRECTION_PROMPT,
+    OCR_VISION_FUSION_PROMPT,
+    VISION_SYSTEM_PROMPT,
+)
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -38,62 +44,6 @@ GEMINI_MODELS = [
     "gemini-1.5-flash",
     "gemini-1.5-pro",
 ]
-
-SYSTEM_PROMPT = """Tu es un assistant spécialisé dans l'analyse de documents administratifs.
-Analyse le texte fourni et réponds UNIQUEMENT avec un objet JSON valide contenant :
-{
-  "category": "une catégorie parmi : Facture, Impôts, Santé, Banque, Contrat, Assurance, Travail, Courrier, Autre",
-  "summary": "résumé en 15 mots maximum",
-  "date": "date principale du document au format YYYY-MM-DD ou null",
-  "amount": "montant principal en chiffres avec devise ou null",
-  "issuer": "organisme ou entreprise émettrice ou null"
-}
-Ne réponds rien d'autre que le JSON."""
-
-OCR_CORRECTION_PROMPT = """Tu es un expert en correction de texte OCR pour des documents administratifs français.
-Le texte suivant a été extrait par OCR (reconnaissance optique de caractères) et peut contenir des erreurs typiques :
-- Lettres confondues (l/1/I, 0/O, rn/m, etc.)
-- Espaces manquants ou en trop
-- Ponctuation incorrecte
-- Mots coupés
-
-Corrige ces erreurs en te basant sur le contexte (document administratif français).
-Retourne UNIQUEMENT le texte corrigé, sans commentaires ni explications.
-Conserve la structure et la mise en page originale autant que possible.
-Score de confiance OCR fourni : {confidence}% — plus il est bas, plus la correction est importante."""
-
-OCR_VISION_FUSION_PROMPT = """Tu es un expert en correction de texte OCR pour des documents administratifs français.
-L'image originale du document t'est fournie ainsi que le texte extrait automatiquement par OCR.
-Une analyse préliminaire par vision a également été effectuée et est fournie comme contexte.
-
-Score de confiance OCR : {confidence}%
-Contexte vision (analyse préliminaire) : {vision_context}
-
-Erreurs OCR typiques à corriger en t'aidant de l'image et du contexte vision :
-- Lettres confondues (l/1/I, 0/O, rn/m, cl/d, etc.)
-- Espaces manquants ou en trop
-- Ponctuation incorrecte
-- Mots coupés ou fusionnés
-- Chiffres mal reconnus dans les montants et dates
-
-Texte OCR à corriger :
-{ocr_text}
-
-Retourne UNIQUEMENT le texte corrigé, sans commentaires ni explications.
-Conserve la structure et la mise en page originale."""
-
-VISION_SYSTEM_PROMPT = """Tu es un assistant spécialisé dans l'analyse de documents administratifs par vision.
-On te fournit l'image d'un document. Analyse-la et réponds UNIQUEMENT avec un objet JSON valide contenant :
-{
-  "category": "une catégorie parmi : Facture, Impôts, Santé, Banque, Contrat, Assurance, Travail, Courrier, Autre",
-  "summary": "résumé en 15 mots maximum",
-  "date": "date principale du document au format YYYY-MM-DD ou null",
-  "amount": "montant principal en chiffres avec devise ou null",
-  "issuer": "organisme ou entreprise émettrice ou null",
-  "extracted_text": "texte principal extrait du document (500 mots max)"
-}
-Ne réponds rien d'autre que le JSON."""
-
 
 def get_llm_config() -> dict:
     """Lit la config LLM depuis la DB, avec fallback sur les variables d'env."""
