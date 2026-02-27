@@ -385,11 +385,13 @@ def analyze_with_vision(file_path: str, config: dict) -> dict:
     except json.JSONDecodeError:
         logger.warning("[vision-a] JSON invalide")
         return {"category": "Autre", "summary": "Analyse vision impossible (JSON invalide)",
-                "date": None, "amount": None, "issuer": None, "extracted_text": ""}
+                "date": None, "amount": None, "issuer": None,
+                "extracted_text_printed": "", "extracted_text_handwritten": None}
     except Exception as e:
         logger.error(f"[vision-a] Erreur : {e}")
         return {"category": "Erreur", "summary": str(e)[:100],
-                "date": None, "amount": None, "issuer": None, "extracted_text": ""}
+                "date": None, "amount": None, "issuer": None,
+                "extracted_text_printed": "", "extracted_text_handwritten": None}
 
 
 # ---------------------------------------------------------------------------
@@ -434,7 +436,8 @@ def _merge_analyses(vision_json: dict, ocr_json: dict) -> dict:
         val_b = ocr_json.get(key)
         if val_b and val_b not in ("Erreur", "Autre", None):
             merged[key] = val_b
-    merged["extracted_text"] = vision_json.get("extracted_text", "")
+    merged["extracted_text_printed"] = vision_json.get("extracted_text_printed", "")
+    merged["extracted_text_handwritten"] = vision_json.get("extracted_text_handwritten", None)
     merged["pipeline_sources"] = ["vision", "ocr+llm"]
     return merged
 
@@ -554,11 +557,11 @@ def process_document(file_path: str) -> tuple[str, dict]:
             logger.info(f"[processor] Voie a) JSON vision prêt — Voie b) OCR confiance={confidence:.1f}%")
 
             # Voie b) : correction/fusion OCR avec contexte vision, puis analyse LLM
-            extracted_text = vision_result.get("extracted_text", "") or ocr_text
+            extracted_text = vision_result.get("extracted_text_printed", "") or ocr_text
             if ocr_text.strip() and config.get("ocr_vision_fusion", True):
                 corrected_text = correct_ocr_with_vision_fusion(
                     enhanced_path, ocr_text, confidence, config,
-                    vision_context={k: v for k, v in vision_result.items() if k != "extracted_text"}
+                    vision_context={k: v for k, v in vision_result.items() if k not in ("extracted_text_printed", "extracted_text_handwritten")}
                 )
             elif ocr_text.strip():
                 corrected_text = correct_ocr_with_llm(ocr_text, confidence, config)
@@ -571,7 +574,7 @@ def process_document(file_path: str) -> tuple[str, dict]:
             # Fusion des deux JSON
             final_result = _merge_analyses(vision_result, ocr_json)
             # Sauvegarder le texte corrigé Vision Fusion (pas le texte brut voie a)
-            final_result["extracted_text"] = corrected_text or extracted_text
+            final_result["extracted_text_printed"] = corrected_text or extracted_text
             # Distinguer si Vision Fusion a été utilisée
             if ocr_text.strip() and config.get("ocr_vision_fusion", True):
                 final_result["pipeline_sources"] = ["vision", "ocr+vision_fusion"]

@@ -95,17 +95,32 @@ Aucune explication."""
 # Analyse par vision directe (image base64 → JSON structuré)
 # ---------------------------------------------------------------------------
 
-VISION_SYSTEM_PROMPT = """Tu es un assistant spécialisé dans l'analyse de documents administratifs par vision.
-On te fournit l'image d'un document. Analyse-la et réponds UNIQUEMENT avec un objet JSON valide contenant :
+VISION_SYSTEM_PROMPT = """Tu es un assistant spécialisé dans l'analyse visuelle de documents administratifs et médicaux.
+L'image d'un document t'est fournie.
+Analyse complète requise :
+- Texte imprimé
+- Cases cochées
+- Tampons
+- Signatures
+- Mentions manuscrites (priorité élevée)
+Les éléments manuscrits peuvent modifier ou compléter le contenu imprimé.
+Ils doivent être identifiés, transcrits et intégrés dans l'analyse factuelle.
+Réponds UNIQUEMENT avec un objet JSON strictement valide :
 {
   "category": "une catégorie parmi : Facture, Impôts, Santé, Banque, Contrat, Assurance, Travail, Courrier, Autre",
   "summary": "résumé en 15 mots maximum",
-  "date": "date principale du document au format YYYY-MM-DD ou null",
+  "date": "date principale visible (manuscrite prioritaire) au format YYYY-MM-DD ou null",
   "amount": "montant principal en chiffres avec devise ou null",
-  "issuer": "organisme ou entreprise émettrice ou null",
-  "extracted_text": "texte principal extrait du document (500 mots max)"
+  "issuer": "organisme émetteur ou null",
+  "extracted_text_printed": "texte imprimé visible (500 mots max)",
+  "extracted_text_handwritten": "transcription fidèle des éléments manuscrits ou null"
 }
-Ne réponds rien d'autre que le JSON."""
+Règles strictes :
+- Priorité aux informations manuscrites pour les dates, montants, noms et posologies.
+- Ne pas inventer de texte illisible.
+- Si un mot manuscrit est partiellement lisible, retranscrire uniquement la partie certaine.
+- Si totalement illisible → null.
+- Ne rien ajouter en dehors du JSON."""
 
 
 # ---------------------------------------------------------------------------
